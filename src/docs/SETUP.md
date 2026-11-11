@@ -4,17 +4,17 @@ This walks through a full Nexus deployment in the order things depend on each
 other. Each stage works on its own, so you can stop at any point and still have
 something useful.
 
-```mermaid
-flowchart TD
-    S1["1 · Plan names, accounts and secrets"] --> S2["2 · First client on your LAN"]
-    S2 --> S3["3 · Harden the Debian server"]
-    S3 --> S4["4 · NexusAI on the PS5"]
-    S4 --> S5["5 · Gateway, orchestrator, workspace agents"]
-    S5 --> S6["6 · Cloudflare tunnel, Access, Workers"]
-    S6 --> S7["7 · Point every app at the gateway"]
-    S7 --> S8["8 · Nexus Online"]
-    S8 --> S9["9 · Lock it down and verify"]
-```
+<ol class="flow">
+  <li><a href="#1-plan"><span class="flow-n">1</span><span class="flow-t">Plan names, accounts and secrets</span></a></li>
+  <li><a href="#2-start-with-one-client-on-your-lan"><span class="flow-n">2</span><span class="flow-t">First client on your LAN</span></a></li>
+  <li><a href="#3-harden-the-debian-server"><span class="flow-n">3</span><span class="flow-t">Harden the Debian server</span></a></li>
+  <li><a href="#4-add-nexusai-on-the-ps5"><span class="flow-n">4</span><span class="flow-t">NexusAI on the PS5</span></a></li>
+  <li><a href="#5-install-the-debian-services"><span class="flow-n">5</span><span class="flow-t">Gateway, orchestrator, workspace agents</span></a></li>
+  <li><a href="#6-connect-cloudflare"><span class="flow-n">6</span><span class="flow-t">Cloudflare tunnel, Access, Workers</span></a></li>
+  <li><a href="#7-point-every-app-at-the-gateway"><span class="flow-n">7</span><span class="flow-t">Point every app at the gateway</span></a></li>
+  <li><a href="#8-add-nexus-online"><span class="flow-n">8</span><span class="flow-t">Nexus Online</span></a></li>
+  <li><a href="#9-lock-it-down-and-verify"><span class="flow-n">9</span><span class="flow-t">Lock it down and verify</span></a></li>
+</ol>
 
 ## 1. Plan
 
