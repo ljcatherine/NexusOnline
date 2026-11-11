@@ -66,6 +66,7 @@ PS5 models, agent runs and a security page, behind Cloudflare Access.
 | NexusiOS | iPhone · Swift | [ljcatherine/NexusiOS](https://github.com/ljcatherine/NexusiOS) |
 | NexusNix | NixOS · Rust | [ljcatherine/NexusNix](https://github.com/ljcatherine/NexusNix) |
 | NexusWindows | Windows · Rust | [ljcatherine/NexusWindows](https://github.com/ljcatherine/NexusWindows) |
+| NexusAI | PS5 · C++ · 1.0.0 | [ljcatherine/NexusAI](https://github.com/ljcatherine/NexusAI) |
 | **Nexus Online** | Web · Astro and Workers | this repository |
 
 Setup for the whole ecosystem: [nexus.liamjc.dev/docs](https://nexus.liamjc.dev/docs/).

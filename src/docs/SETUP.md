@@ -51,7 +51,7 @@ SSH, the `nexus_hardening` firewall with its 5-minute automatic rollback, and th
 
 ## 4. Add NexusAI on the PS5
 
-Follow [NexusAI](/docs/backend/nexusai/): back up the original NexusAI title and
+Follow [NexusAI](/docs/backend/nexusai/): back up the original upstream title and
 state, install the NexusAI PS5 app under its own title ID with `0755` executables,
 and check `:8081/v1/models` from the Debian server. Enable the `:8082` control API
 later, once the firewall allows only Debian to reach it.

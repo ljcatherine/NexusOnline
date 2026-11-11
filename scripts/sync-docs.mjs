@@ -53,7 +53,9 @@ function flowchartToSteps(code, markdown) {
 const tmp = mkdtempSync(join(tmpdir(), 'nexus-docs-'));
 
 try {
-  execFileSync('git', ['clone', '--quiet', '--depth', '1', 'https://github.com/ljcatherine/Nexus.git', tmp], { stdio: 'inherit' });
+  // NEXUS_DOCS_REPO can point at a local checkout to preview unpushed docs.
+  const source = process.env.NEXUS_DOCS_REPO || 'https://github.com/ljcatherine/Nexus.git';
+  execFileSync('git', ['clone', '--quiet', '--depth', '1', source, tmp], { stdio: 'inherit' });
   rmSync(out, { recursive: true, force: true });
   cpSync(join(tmp, 'docs'), out, { recursive: true, filter: (src) => !/\.(?!md$)[^\\/]+$/i.test(src) });
 
@@ -64,8 +66,6 @@ try {
     const rel = String(entry).replace(/\\/g, '/');
     const text = readFileSync(file, 'utf8')
       .replace(/\r\n/g, '\n')
-      // The site calls the PS5 app NexusAI. Plain "PS5LM" stays where it names real paths or versions.
-      .replaceAll('PS5LM Plus', 'NexusAI')
       // Point relative links at the site's /docs pages (inline links and reference definitions).
       .replace(/\]\(([^)\s]+)\)/g, (m, url) => `](${rewriteLink(url, rel)})`)
       .replace(/^(\s*\[[^\]]+\]:\s*)(\S+)/gm, (m, pre, url) => pre + rewriteLink(url, rel))

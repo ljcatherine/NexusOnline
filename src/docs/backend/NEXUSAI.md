@@ -4,7 +4,7 @@
 
 **Local LLM inference on a PS5, with an authenticated model-control API, an agent orchestrator and an optional Hermes engine.**
 
-Source: [NexusiOS `integrations/ps5lm-plus`](https://github.com/ljcatherine/NexusiOS/tree/main/integrations/ps5lm-plus) · [`agent-orchestrator`](https://github.com/ljcatherine/NexusiOS/tree/main/agent-orchestrator) · [`integrations/hermes`](https://github.com/ljcatherine/NexusiOS/tree/main/integrations/hermes)
+Source: [ljcatherine/NexusAI](https://github.com/ljcatherine/NexusAI) (release 1.0.0) · [`agent-orchestrator`](https://github.com/ljcatherine/NexusiOS/tree/main/agent-orchestrator) · [`integrations/hermes`](https://github.com/ljcatherine/NexusiOS/tree/main/integrations/hermes)
 
 </div>
 
@@ -21,12 +21,12 @@ Apps ──► gateway (Debian) ──► orchestrator :8897 ──► NexusAI P
 ## The NexusAI PS5 app
 
 A reproducible **GPL-3.0-or-later** fork of
-[NexusAI](https://github.com/abhi245y/PS5LM-Plus) (itself built on Mert
+[PS5LM Plus](https://github.com/abhi245y/PS5LM-Plus) (itself built on Mert
 Cobanov's PS5LM), kept in this ecosystem as patches plus new sources rather than
 a copied tree. It ships as a separate PS5 homebrew title with its own title ID,
-so it installs next to the original NexusAI instead of replacing it.
+so it installs next to the original upstream app instead of replacing it.
 
-| | Original NexusAI | NexusAI PS5 app |
+| | Original upstream app | NexusAI PS5 app |
 |---|---|---|
 | Inference | llama-server on `:8081` (OpenAI-compatible) | Unchanged |
 | Branding | PS5LM | NexusAI dashboard |
@@ -57,11 +57,12 @@ You need a PS5 that can run homebrew and the upstream PS5_Vulkan toolchain and
 SDK. Nexus doesn't provide console exploits or homebrew prerequisites.
 
 ```bash
-./integrations/ps5lm-plus/clone-nexus-fork.sh                  # pinned upstream + Nexus patches
-python3 integrations/ps5lm-plus/prepare-test-identity.py …     # pick an unused PPSA##### title ID
-# build inside build/ps5lm-nexus-fork with the upstream scripts/build-app.sh
-python3 integrations/ps5lm-plus/verify-test-title.py build/app-ps5/title/<TITLE_ID>
-./integrations/ps5lm-plus/test-nexus-control.sh build/ps5lm-nexus-fork   # host-side controller tests
+git clone https://github.com/ljcatherine/NexusAI.git && cd NexusAI
+./prepare-build.sh                                   # pinned upstream + NexusAI patches -> build/nexusai
+python3 prepare-test-identity.py …                   # pick an unused PPSA##### title ID
+# build inside build/nexusai with the upstream scripts/build-app.sh
+python3 verify-test-title.py build/app-ps5/title/<TITLE_ID>
+./test-control.sh                                    # host-side controller tests
 ```
 
 Rules for every install:

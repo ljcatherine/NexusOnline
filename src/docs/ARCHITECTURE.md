@@ -18,7 +18,7 @@ through Cloudflare without opening inbound ports.
 | Agent orchestrator | Debian, `127.0.0.1:8897` | [NexusiOS `agent-orchestrator/`](https://github.com/ljcatherine/NexusiOS/tree/main/agent-orchestrator) | Durable agent runs, approvals, context |
 | Workspace agent | Debian and NixOS, `127.0.0.1:8896` | [NexusiOS `workspace-agent/`](https://github.com/ljcatherine/NexusiOS/tree/main/workspace-agent) | Read-only workspace bridge |
 | `nexus-ro` | Debian | [NexusNix `crates/nexus-ro`](https://github.com/ljcatherine/NexusNix/tree/main/crates/nexus-ro) | SSH forced command, read-only catalog |
-| NexusAI (NexusAI) | PS5, `:8081` and `:8082` | [NexusiOS `integrations/ps5lm-plus`](https://github.com/ljcatherine/NexusiOS/tree/main/integrations/ps5lm-plus) | Local LLM inference and model control |
+| NexusAI | PS5, `:8081` and `:8082` | [ljcatherine/NexusAI](https://github.com/ljcatherine/NexusAI) | Local LLM inference and model control |
 
 ## Request paths
 

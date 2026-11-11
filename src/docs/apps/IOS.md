@@ -74,7 +74,6 @@ OAuth with PKCE in the system browser. Tokens stay in the Keychain.
 | `cloudflare/` | `nexus-gateway` Worker |
 | `agent-orchestrator/` | Python agent orchestrator |
 | `workspace-agent/` | Go read-only workspace bridge |
-| `integrations/ps5lm-plus` | NexusAI NexusAI fork |
 | `integrations/hermes` | Optional Hermes agent engine |
 | `scripts/` | Build, release, validation and Debian hardening |
 
