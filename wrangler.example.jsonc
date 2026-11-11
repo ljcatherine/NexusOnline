@@ -1,0 +1,28 @@
+// Copy to wrangler.jsonc (git-ignored) and fill in the four REPLACE values.
+// See DEPLOY.md. The Worker fails closed: until these are set, /app and /api answer 401.
+{
+  "name": "nexus-online",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-10-30",
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [{ "pattern": "REPLACE_WITH_HOSTNAME", "custom_domain": true }],
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    // Every request goes through the Worker first, so /app is never served without the Access check.
+    "run_worker_first": true,
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "none"
+  },
+  "vars": {
+    "ACCESS_TEAM_DOMAIN": "REPLACE_WITH_TEAM.cloudflareaccess.com",
+    "ACCESS_AUDIENCE": "REPLACE_WITH_ACCESS_APPLICATION_AUD_TAG",
+    "OWNER_EMAIL": "REPLACE_WITH_OWNER_EMAIL"
+  },
+  // Same private VPC service the existing nexus-gateway Worker uses.
+  "vpc_services": [
+    { "binding": "NEXUS_GATEWAY", "service_id": "REPLACE_WITH_VPC_SERVICE_ID", "remote": true }
+  ],
+  "observability": { "enabled": true }
+}

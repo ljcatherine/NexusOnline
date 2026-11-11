@@ -1,0 +1,19 @@
+{
+  "name": "nexus-online",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "test": "node --test worker/worker.test.mjs",
+    "preview:worker": "node scripts/preview.mjs",
+    "deploy": "npm test && astro build && wrangler deploy",
+    "docs": "node scripts/sync-docs.mjs"
+  },
+  "dependencies": {
+    "astro": "7.4.2"
+  },
+  "devDependencies": {
+    "wrangler": "4.154.0"
+  }
+}

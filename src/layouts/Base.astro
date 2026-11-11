@@ -1,0 +1,136 @@
+---
+import '../styles/global.css';
+interface Props { title: string; description: string }
+const { title, description } = Astro.props;
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{title}</title>
+  <meta name="description" content={description}>
+  <meta name="theme-color" content="#070C18">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <script is:inline src="/motion.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Geist:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+</head>
+<body>
+  <canvas id="stars" aria-hidden="true"></canvas>
+  <div class="aura" aria-hidden="true"></div>
+  <div id="progress" aria-hidden="true"></div>
+  <nav aria-label="Main">
+    <div class="wrap">
+      <a class="brand" href="/"><img src="/favicon.svg" alt="" width="28" height="28">Nexus</a>
+      <div class="links">
+        <a href="/#clients">Clients</a>
+        <a href="/#desktop">Desktop</a>
+        <a href="/#how">How it fits</a>
+        <a href="/#security">Security</a>
+        <a href="/docs/">Docs</a>
+        <a class="btn primary" href="/app">Sign in</a>
+      </div>
+    </div>
+  </nav>
+  <main>
+    <slot />
+  </main>
+  <footer>
+    <div class="wrap">
+      <span>Nexus is open source: <a href="https://github.com/ljcatherine/Nexus">ljcatherine/Nexus</a> · <a href="/docs/">Docs</a></span>
+      <span><button type="button" class="motion-toggle" id="motion-toggle">Animations: on</button></span>
+      <span><a href="/app">Sign in to Nexus Online</a></span>
+    </div>
+  </footer>
+  <script>
+    const reduce = document.documentElement.dataset.motion === 'off';
+
+    const toggle = document.getElementById('motion-toggle')!;
+    toggle.textContent = `Animations: ${reduce ? 'off' : 'on'}`;
+    toggle.addEventListener('click', () => {
+      try { localStorage.setItem('nexus.motion', reduce ? 'on' : 'off'); } catch { /* blocked */ }
+      location.reload();
+    });
+
+    // Scroll-driven fallback for browsers without CSS scroll timelines (Firefox, older Safari).
+    // Uses the individual translate/scale/rotate properties so hover tilt (transform) still composes.
+    if (!reduce && !CSS.supports('animation-timeline: view()')) {
+      const clamp = (v: number) => Math.max(0, Math.min(1, v));
+      const reveals = [...document.querySelectorAll<HTMLElement>('.reveal')];
+      const tilts = [...document.querySelectorAll<HTMLElement>('.tilt-in')];
+      const hero = document.querySelector<HTMLElement>('.hero-orbit');
+      let queued = false;
+      const paint = () => {
+        queued = false;
+        const vh = innerHeight;
+        for (const el of reveals) {
+          const r = el.getBoundingClientRect();
+          const p = clamp((vh - r.top) / (Math.min(r.height, vh) * .55));
+          el.style.opacity = String(.15 + .85 * p);
+          el.style.translate = `0 ${48 * (1 - p)}px`;
+          el.style.scale = String(.98 + .02 * p);
+        }
+        for (const el of tilts) {
+          const r = el.getBoundingClientRect();
+          const p = clamp((vh - r.top) / ((vh + r.height) * .4));
+          el.style.opacity = String(.4 + .6 * p);
+          el.style.translate = `0 ${60 * (1 - p)}px`;
+          el.style.scale = String(.94 + .06 * p);
+          el.style.rotate = `x ${22 * (1 - p)}deg`;
+        }
+        if (hero) {
+          const p = clamp(scrollY / (vh * .8));
+          hero.style.translate = `0 ${120 * p}px`; hero.style.scale = String(1 - .14 * p); hero.style.opacity = String(1 - .7 * p);
+        }
+      };
+      const queue = () => { if (!queued) { queued = true; requestAnimationFrame(paint); } };
+      addEventListener('scroll', queue, { passive: true }); addEventListener('resize', queue); paint();
+    }
+
+    const prog = document.getElementById('progress')!;
+    const onScroll = () => {
+      const h = document.documentElement.scrollHeight - innerHeight;
+      prog.style.transform = `scaleX(${h > 0 ? scrollY / h : 0})`;
+    };
+    addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+    // starfield with scroll + pointer parallax
+    const c = document.getElementById('stars') as HTMLCanvasElement, x = c.getContext('2d')!;
+    let w = 0, h = 0, d = 1, px = 0, py = 0;
+    let stars: { x: number; y: number; z: number; t: number }[] = [];
+    const size = () => {
+      d = devicePixelRatio || 1; w = c.width = innerWidth * d; h = c.height = innerHeight * d;
+      stars = Array.from({ length: Math.round(innerWidth * innerHeight / 5000) }, () => ({ x: Math.random() * w, y: Math.random() * h, z: Math.random() * .9 + .1, t: Math.random() * 6.28 }));
+    };
+    size(); addEventListener('resize', size);
+    addEventListener('pointermove', e => { px = e.clientX / innerWidth - .5; py = e.clientY / innerHeight - .5; });
+    const draw = (t: number) => {
+      x.clearRect(0, 0, w, h);
+      for (const s of stars) {
+        const sx = ((s.x - px * 40 * d * s.z) % w + w) % w;
+        const sy = ((s.y - scrollY * s.z * .35 * d - py * 40 * d * s.z) % h + h) % h;
+        x.globalAlpha = (.35 + .65 * Math.abs(Math.sin(t / 1400 + s.t))) * s.z;
+        x.fillStyle = s.z > .75 ? '#C9ADFF' : '#9CBCFF';
+        x.fillRect(sx, sy, s.z * 2 * d, s.z * 2 * d);
+      }
+      if (!reduce) requestAnimationFrame(draw);
+    };
+    requestAnimationFrame(draw);
+
+    // pointer spotlight on glass, tilt on [data-tilt]
+    document.querySelectorAll<HTMLElement>('.glass').forEach(el => el.addEventListener('pointermove', e => {
+      const r = el.getBoundingClientRect();
+      el.style.setProperty('--mx', `${e.clientX - r.left}px`); el.style.setProperty('--my', `${e.clientY - r.top}px`);
+    }));
+    if (!reduce) document.querySelectorAll<HTMLElement>('[data-tilt]').forEach(el => {
+      el.addEventListener('pointermove', e => {
+        const r = el.getBoundingClientRect();
+        el.style.transform = `perspective(1600px) rotateX(${((e.clientY - r.top) / r.height - .5) * -5}deg) rotateY(${((e.clientX - r.left) / r.width - .5) * 7}deg)`;
+      });
+      el.addEventListener('pointerleave', () => { el.style.transform = ''; });
+    });
+  </script>
+</body>
+</html>

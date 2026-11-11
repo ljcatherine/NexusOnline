@@ -1,0 +1,379 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base title="Nexus" description="Nexus is an AI IDE and home-lab control room across iPhone, Windows and the web.">
+
+  <header class="wrap hero">
+    <div class="copy">
+      <div class="eyebrow">The Nexus ecosystem</div>
+      <h1><span class="line"><span>Your whole lab,</span></span><span class="line"><span class="grad">one orbit.</span></span></h1>
+      <p class="lede">Nexus is an AI IDE and home-lab control room. NexusiOS on iPhone, Nexus Desktop for Windows, NexusNix for NixOS and Nexus Online share the same hosts, the same NexusAI models and the same security policy.</p>
+      <div class="chips">
+        <span class="chip"><span class="dot"></span>Open source</span>
+        <span class="chip">Owner-only sign-in</span>
+        <span class="chip">Cloudflare Access</span>
+        <span class="chip">Read-only by default</span>
+      </div>
+      <div class="cta">
+        <a class="btn primary" href="/app">Sign in to Nexus Online</a>
+        <a class="btn" href="/docs/">Read the docs</a>
+      </div>
+    </div>
+    <div class="hero-orbit" role="img" aria-label="The Nexus Orbit N with iPhone, Desktop and Web circling it">
+      <svg viewBox="0 0 500 500">
+        <defs>
+          <linearGradient id="arc" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9CBCFF"/><stop offset="1" stop-color="#C9ADFF"/></linearGradient>
+          <radialGradient id="core" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#1D3566"/><stop offset="1" stop-color="#070C18" stop-opacity="0"/></radialGradient>
+          <path id="orb" d="M60 250 A190 70 0 1 0 440 250 A190 70 0 1 0 60 250"/>
+        </defs>
+        <circle cx="250" cy="250" r="230" fill="url(#core)"/>
+        <circle class="ring" cx="250" cy="250" r="225" stroke="#28354A" style="animation-duration:120s"/>
+        <circle class="ring" cx="250" cy="250" r="175" stroke="#28354A" style="animation-duration:80s;animation-direction:reverse"/>
+        <g transform="rotate(-24 250 250)"><use href="#orb" fill="none" stroke="#9CBCFF" stroke-opacity=".25" stroke-width="10"/></g>
+        <path class="draw" d="M163 352V148L337 352V148" fill="none" stroke="#E9EDF7" stroke-width="44" stroke-linecap="round" stroke-linejoin="round"/>
+        <g transform="rotate(-24 250 250)">
+          <path class="draw" d="M60 250A190 70 0 0 0 440 250" fill="none" stroke="url(#arc)" stroke-width="11" stroke-linecap="round"/>
+          <circle r="15" fill="#9CBCFF"><animateMotion dur="14s" repeatCount="indefinite"><mpath href="#orb"/></animateMotion></circle>
+          <circle r="15" fill="#C9ADFF"><animateMotion dur="14s" begin="-4.67s" repeatCount="indefinite"><mpath href="#orb"/></animateMotion></circle>
+          <circle r="15" fill="#7CE8CA"><animateMotion dur="14s" begin="-9.33s" repeatCount="indefinite"><mpath href="#orb"/></animateMotion></circle>
+        </g>
+      </svg>
+    </div>
+  </header>
+
+  <!-- Pinned tour: scroll drives the orbit and swaps the panel. Without JS or with reduced motion it is a plain list. -->
+  <section id="clients" class="tour">
+    <div class="tour-stage wrap">
+      <div class="tour-orbit" aria-hidden="true">
+        <svg viewBox="0 0 500 500">
+          <g transform="rotate(-24 250 250)"><ellipse cx="250" cy="250" rx="190" ry="70" fill="none" stroke="#9CBCFF" stroke-opacity=".3" stroke-width="3"/></g>
+          <g class="behind"></g>
+          <path d="M163 352V148L337 352V148" fill="none" stroke="#E9EDF7" stroke-width="44" stroke-linecap="round" stroke-linejoin="round"/>
+          <g class="front"></g>
+          <g class="tnode" data-i="0"><circle r="14" fill="#9CBCFF"/><text y="-24">iPhone</text></g>
+          <g class="tnode" data-i="1"><circle r="14" fill="#C9ADFF"/><text y="-24">Desktop</text></g>
+          <g class="tnode" data-i="2"><circle r="14" fill="#7CE8CA"/><text y="-24">Web</text></g>
+        </svg>
+        <div class="steps"><i></i><i></i><i></i></div>
+      </div>
+      <div class="panels">
+        <article class="panel" data-i="0" style="--c:var(--accent)">
+          <div class="eyebrow">NexusiOS · iPhone</div>
+          <h2>The lab in your pocket.</h2>
+          <p class="lede">Device profiles that try LAN, Tailscale and Cloudflare in order. SSH terminals, live host metrics, systemd services and logs, SFTP, and NexusAI chat over the gateway.</p>
+          <ul><li>Host keys confirmed on first use, changed keys rejected</li><li>Low-resource notifications</li><li>Makes the one-time code that unlocks Desktop</li></ul>
+        </article>
+        <article class="panel" data-i="1" style="--c:var(--purple)">
+          <div class="eyebrow">Nexus Desktop · Windows and NixOS</div>
+          <h2>An AI IDE that knows your servers.</h2>
+          <p class="lede">A Rust editor with Codex, Claude Code and NexusAI built in, next to a dashboard for every host you run. Agent edits arrive as diffs you accept hunk by hunk.</p>
+          <ul><li>Ask, Plan, Agent and Bypass modes</li><li>PowerShell, WSL, Git Bash and SSH terminals</li><li>NexusNix: the same app for NixOS, in progress</li></ul>
+          <a class="btn primary" href="/app">Sign in</a>
+        </article>
+        <article class="panel" data-i="2" style="--c:var(--ok)">
+          <div class="eyebrow">Nexus Online · browser</div>
+          <h2>Any screen, read-only.</h2>
+          <p class="lede">A dashboard in the browser behind Cloudflare Access, for machines that aren't yours. It reads the same telemetry through the same policy engine and can't write anything you haven't unlocked.</p>
+          <ul><li>NexusAI chat, workspace files, models and agent runs</li><li>No passwords or SSH keys in the browser</li><li>Owner-only sign-in through Cloudflare Access</li></ul>
+          <a class="btn primary" href="/app">Sign in</a>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="desktop" class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Nexus Desktop</div>
+      <h2>Four tools in one window.</h2>
+    </div>
+    <div class="features">
+      <article class="glass feature reveal" data-tilt>
+        <span class="tag">IDE</span>
+        <h3>An editor that respects your ignores</h3>
+        <p>The explorer honours <span class="mono">.gitignore</span>, <span class="mono">.cursorignore</span> and <span class="mono">.nexusignore</span>. Multi-tab editing with highlighting for 15+ languages, find and replace, split view, a Git gutter, quick open and a command palette.</p>
+      </article>
+      <article class="glass feature reveal" data-tilt>
+        <span class="tag">AI</span>
+        <h3>Codex and Claude Code, side by side</h3>
+        <p>Both run through their official CLIs on your own plan, and NexusAI runs models locally on the PS5. You see exactly what context is shared, secrets are flagged before sending, and every agent edit lands as a reviewable diff. Ctrl+K edits inline.</p>
+      </article>
+      <article class="glass feature reveal" data-tilt>
+        <span class="tag">Infrastructure</span>
+        <h3>Every host on one dashboard</h3>
+        <p>Live CPU, memory, disk and network with alerts at 90%. Services, logs, processes and network probes. NixOS dry-build and switch, plus Minecraft and NexusAI status.</p>
+      </article>
+      <article class="glass feature reveal" data-tilt>
+        <span class="tag">Security</span>
+        <h3>One policy engine for everything</h3>
+        <p>Every remote action passes through the same Rust policy engine. SSH host keys are pinned. The app can lock behind a 4-digit code from your iPhone.</p>
+      </article>
+    </div>
+  </section>
+
+  <section id="how" class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">How it fits</div>
+      <h2>Three clients, one gateway.</h2>
+      <p class="lede">Remote traffic goes through Cloudflare Access to the gateway or over SSH with pinned keys. The gateway passes AI chat on to NexusAI, which runs the models on a PS5. The phone's one-time code never touches the network: it is computed offline from a shared key.</p>
+    </div>
+    <div class="glass diagram reveal">
+      <svg viewBox="0 0 810 450" role="img" aria-label="Desktop connects to the NixOS host over SSH and to nexus-ro on Debian with a forced command. Desktop, iPhone and the browser reach the Nexus gateway through Cloudflare Access. The gateway sends AI chat to NexusAI on the PS5. The iPhone gives Desktop a one-time passcode offline.">
+        <rect class="group" x="545" y="118" width="230" height="212" rx="16"/>
+        <text class="glabel" x="562" y="140">DEBIAN SERVER</text>
+
+        <path class="flow" d="M210 68 H 560" style="stroke:var(--accent)"/>
+        <path class="flow" d="M210 84 C 500 84, 470 288, 560 288" style="stroke:var(--ok)"/>
+        <path class="flow slow" d="M120 150 V 96" style="stroke:var(--purple)"/>
+        <path class="flow" d="M210 100 C 255 100, 255 170, 300 170" style="stroke:var(--accent)"/>
+        <path class="flow" d="M210 178 H 300" style="stroke:var(--accent)"/>
+        <path class="flow" d="M210 288 C 255 288, 255 186, 300 186" style="stroke:var(--ok)"/>
+        <path class="flow" d="M440 178 H 560" style="stroke:var(--accent)"/>
+        <path class="flow" d="M660 206 V 260" style="stroke:var(--ok)"/>
+        <path class="flow" d="M760 186 C 802 186, 802 400, 760 400" style="stroke:var(--purple)"/>
+        <rect class="group" x="545" y="346" width="230" height="96" rx="16"/>
+        <text class="glabel" x="562" y="366">PS5</text>
+
+        <text class="elabel" x="380" y="58">SSH · pinned host keys</text>
+        <text class="elabel" x="392" y="132" text-anchor="end">SSH forced command</text>
+        <text class="elabel" x="112" y="127" text-anchor="end">one-time code</text>
+        <text class="elabel" x="458" y="168">relay</text>
+        <text class="elabel" x="768" y="341" text-anchor="end">AI chat</text>
+
+        <rect class="box" x="30" y="40" width="180" height="56" rx="12" style="stroke:var(--purple)"/><text class="bt" x="46" y="64">Nexus Desktop</text><text class="bs" x="46" y="83">Windows · NexusNix</text>
+        <rect class="box" x="30" y="150" width="180" height="56" rx="12"/><text class="bt" x="46" y="174">NexusiOS</text><text class="bs" x="46" y="193">iPhone · SwiftUI</text>
+        <rect class="box" x="30" y="260" width="180" height="56" rx="12" style="stroke:var(--ok)"/><text class="bt" x="46" y="284">Nexus Online</text><text class="bs" x="46" y="303">browser · new</text>
+        <rect class="box" x="300" y="150" width="140" height="56" rx="12"/><text class="bt" x="316" y="174">Cloudflare</text><text class="bs" x="316" y="193">Access · PKCE</text>
+        <rect class="box" x="560" y="40" width="200" height="56" rx="12"/><text class="bt" x="576" y="64">NixOS host</text><text class="bs" x="576" y="83">dry-build · switch</text>
+        <rect class="box" x="560" y="150" width="200" height="56" rx="12" style="stroke:var(--accent)"/><text class="bt" x="576" y="174">Nexus gateway</text><text class="bs" x="576" y="193">NexusAI · Minecraft · relay</text>
+        <rect class="box" x="560" y="260" width="200" height="56" rx="12"/><text class="bt" x="576" y="284">nexus-ro</text><text class="bs" x="576" y="303">read-only command catalog</text>
+        <rect class="box" x="560" y="374" width="200" height="56" rx="12" style="stroke:var(--purple)"/><text class="bt" x="576" y="398">NexusAI</text><text class="bs" x="576" y="417">local models · dashboard</text>
+      </svg>
+    </div>
+  </section>
+
+  <section id="security" class="wrap security">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Security</div>
+      <h2>Debian is read-only. Agents never write.</h2>
+      <p class="lede">The Debian server also runs the gateway, so Nexus treats it as read-only by default. The rule is enforced in the Rust backend and again on the server by <span class="mono">nexus-ro</span>, not only in the interface.</p>
+    </div>
+    <div class="sec-grid">
+      <div class="glass term tilt-in" data-tilt>
+        <div class="chrome"><i></i><i></i><i></i><span>agent session · debian</span></div>
+        <pre id="term" aria-label="Example agent session showing a blocked write and an allowed read"><span class="p">agent ›</span> systemctl restart nexus-gateway
+<span class="no">✕ blocked · agents never write to Debian</span>
+<span class="p">agent ›</span> journalctl -u nexus-gateway -n 50
+<span class="yes">✓ allowed · read-only catalog command</span>
+<span class="p">owner ›</span> unlock debian
+<span class="warn">◷ enter the code from your iPhone · 20 s</span></pre>
+      </div>
+      <ul class="facts">
+        <li class="reveal"><b>Owner unlock</b><span>A 4-digit code from the iPhone app opens Debian writes for 30 minutes. Only for you, never for agents.</span></li>
+        <li class="reveal"><b>Pinned host keys</b><span>You confirm each host key once. A changed key stops the connection until you rotate it on purpose.</span></li>
+        <li class="reveal"><b>Secrets stay put</b><span>API keys live in Windows Credential Manager. Context sent to an AI is scanned for secrets first.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="wrap status">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Open source</div>
+      <h2>Build the same lab yourself.</h2>
+      <p class="lede">Nexus is now public. Every app has its own repository, and the docs walk through setting up the whole system from scratch: the Debian server, Cloudflare, NexusAI and each client.</p>
+      <div class="cta">
+        <a class="btn primary" href="/docs/setup/">Start the setup guide</a>
+        <a class="btn" href="https://github.com/ljcatherine/Nexus" rel="noopener">ljcatherine/Nexus on GitHub</a>
+      </div>
+      <ul class="repos">
+        <li><a href="https://github.com/ljcatherine/NexusiOS" rel="noopener">NexusiOS</a><span>iPhone · Swift</span></li>
+        <li><a href="https://github.com/ljcatherine/NexusNix" rel="noopener">NexusNix</a><span>NixOS · Rust</span></li>
+        <li><a href="https://github.com/ljcatherine/NexusWindows" rel="noopener">NexusWindows</a><span>Windows · Rust</span></li>
+        <li><a href="https://github.com/ljcatherine/NexusOnline" rel="noopener">NexusOnline</a><span>Web · Astro and Workers</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="glass band tilt-in">
+      <div>
+        <div class="eyebrow">Nexus Online</div>
+        <h2>Your lab, from any browser.</h2>
+        <p class="lede">Sign in with Cloudflare Access to see the PS5, chat with NexusAI and browse your workspaces. Owner only, read-only.</p>
+      </div>
+      <a class="btn primary big" href="/app">Sign in</a>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .hero{padding-block:72px 64px;display:grid;grid-template-columns:1.15fr .85fr;gap:40px;align-items:center}
+  .hero .copy{display:grid;gap:22px}
+  .hero h1 .line{display:block;overflow:hidden;padding-bottom:.06em}
+  .hero h1 .line > span{display:inline-block;animation:lineup 1.1s cubic-bezier(.2,.8,.2,1) both}
+  .hero h1 .line:nth-child(2) > span{animation-delay:.12s}
+  @keyframes lineup{from{transform:translateY(105%)}}
+  .hero-orbit{aspect-ratio:1;max-width:100%}
+  .hero-orbit svg{width:100%;height:100%;overflow:visible}
+  .ring{fill:none;stroke-width:1.5;stroke-dasharray:4 10;animation:spin linear infinite;transform-origin:50% 50%}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .draw{stroke-dasharray:1400;stroke-dashoffset:1400;animation:draw 2.2s .3s cubic-bezier(.6,0,.2,1) forwards}
+  @keyframes draw{to{stroke-dashoffset:0}}
+  :global(html[data-motion="off"]) .draw{stroke-dashoffset:0}
+  @media (prefers-reduced-motion:reduce){ :global(html:not([data-motion])) .draw{stroke-dashoffset:0} }
+  @supports (animation-timeline: scroll()){
+    .hero-orbit{animation:sink linear both;animation-timeline:scroll(root);animation-range:0 80vh}
+  }
+  @keyframes sink{to{transform:translateY(120px) scale(.86);opacity:.3}}
+
+  /* tour: static list by default */
+  .tour-stage{display:grid;grid-template-columns:.9fr 1.1fr;gap:48px;align-items:center}
+  .tour-orbit{position:relative;display:grid;gap:16px;justify-items:center}
+  .tour-orbit svg{width:100%;max-width:440px;overflow:visible}
+  .tnode text{font:600 15px var(--mono);fill:var(--muted);text-anchor:middle}
+  .tnode{transition:opacity .3s}
+  .tnode.on text{fill:var(--text)}
+  .tnode.on circle{filter:drop-shadow(0 0 12px currentColor)}
+  .steps{display:flex;gap:8px}
+  .steps i{width:28px;height:4px;border-radius:2px;background:var(--border);transition:background .3s}
+  .steps i.on{background:linear-gradient(90deg,var(--accent),var(--purple))}
+  .panels{display:grid;gap:56px}
+  .panel{display:grid;gap:16px;align-content:start}
+  .panel .eyebrow{color:var(--c)}
+  .panel ul{margin:0;padding:0;list-style:none;display:grid;gap:8px;color:var(--muted)}
+  .panel li{display:flex;gap:10px;align-items:center}
+  .panel li::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--c);flex:none}
+  .panel .btn{justify-self:start}
+  /* live: pinned stage, scroll swaps panels */
+  .tour.live{height:300vh;padding-block:0}
+  .tour.live .tour-stage{position:sticky;top:64px;height:calc(100svh - 64px)}
+  .tour.live .panel{grid-area:1/1;opacity:0;transform:translateY(40px);filter:blur(6px);transition:opacity .5s,transform .6s cubic-bezier(.2,.8,.2,1),filter .5s;pointer-events:none}
+  .tour.live .panel.on{opacity:1;transform:none;filter:none;pointer-events:auto}
+
+  .features{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+  .feature{padding:26px;display:grid;gap:12px;align-content:start;transition:transform .5s cubic-bezier(.2,.8,.2,1)}
+  .feature p{margin:0;color:var(--muted)}
+  .tag{justify-self:start;font:500 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--purple);border:1px solid color-mix(in srgb,var(--purple) 35%,transparent);padding:3px 9px;border-radius:99px}
+
+  .diagram{padding:24px;overflow-x:auto}
+  .diagram svg{min-width:680px;width:100%;height:auto;display:block}
+  .group{fill:color-mix(in srgb,var(--editor) 60%,transparent);stroke:var(--border);stroke-dasharray:4 6}
+  .glabel{font:600 11px var(--mono);letter-spacing:.12em;fill:var(--dim)}
+  .box{fill:var(--elevated);stroke:var(--border)}
+  .bt{font:600 14px var(--body);fill:var(--text)}
+  .bs{font:400 11px var(--mono);fill:var(--muted)}
+  .elabel{font:400 11px var(--mono);fill:var(--dim)}
+  .flow{fill:none;stroke-width:2;stroke-dasharray:6 8;animation:flow 1.2s linear infinite}
+  .flow.slow{animation-duration:3s}
+  @keyframes flow{to{stroke-dashoffset:-28}}
+
+  .sec-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:28px;align-items:start}
+  .term{transition:transform .5s cubic-bezier(.2,.8,.2,1)}
+  .chrome{display:flex;gap:7px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--border);background:rgba(0,0,0,.18);font:400 12px var(--mono);color:var(--dim)}
+  .chrome i{width:10px;height:10px;border-radius:50%;background:var(--border)}
+  .chrome span{margin-left:10px}
+  pre{margin:0;padding:22px;font:400 14px/1.9 var(--mono);color:var(--text);background:var(--editor);white-space:pre-wrap;min-height:248px}
+  pre :global(.p){color:var(--dim)} pre :global(.no){color:var(--err)} pre :global(.yes){color:var(--ok)} pre :global(.warn){color:var(--warn)}
+  pre :global(.caret){display:inline-block;width:8px;height:16px;background:var(--accent);vertical-align:-3px;animation:pulse 1s steps(1) infinite}
+  .facts{list-style:none;margin:0;padding:0;display:grid;gap:22px}
+  .facts li{display:grid;gap:4px;padding-left:18px;border-left:2px solid var(--border)}
+  .facts b{font:600 16px var(--display)}
+  .facts span{color:var(--muted);font-size:14.5px}
+
+  .band{padding:40px;display:flex;gap:28px;align-items:center;justify-content:space-between;flex-wrap:wrap;
+    background:radial-gradient(600px 300px at 100% 0%,color-mix(in srgb,var(--glow-c) 70%,transparent),transparent),var(--glass),var(--surface)}
+  .band > div{display:grid;gap:12px}
+  .repos{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .repos li{display:grid;gap:2px;padding:14px 16px;border-radius:14px;border:1px solid var(--border);background:var(--glass),var(--surface)}
+  .repos a{font:600 16px var(--display);color:var(--text);text-decoration:none}
+  .repos a:hover{color:var(--accent)}
+  .repos span{font:400 12px var(--mono);color:var(--muted)}
+  @media (max-width:760px){ .repos{grid-template-columns:1fr 1fr} }
+  .btn.big{padding:16px 24px;font-size:16px}
+
+  @media (max-width:900px){
+    .hero,.tour-stage,.sec-grid{grid-template-columns:1fr}
+    .hero-orbit{max-width:420px;width:100%;margin-inline:auto}
+    .tour.live .tour-stage{gap:12px;align-content:center}
+    .tour.live .tour-orbit svg{max-width:240px}
+  }
+  @media (max-width:640px){
+    .features{grid-template-columns:1fr}
+    .band{padding:26px}
+  }
+</style>
+
+<script>
+  const reduce = document.documentElement.dataset.motion === 'off';
+
+  // Pinned tour. Each node rides the orbit; the active one swings to the front.
+  const tour = document.querySelector<HTMLElement>('.tour')!;
+  const nodes = [...tour.querySelectorAll<SVGGElement>('.tnode')];
+  const panels = [...tour.querySelectorAll<HTMLElement>('.panel')];
+  const steps = [...tour.querySelectorAll('.steps i')];
+  const front = tour.querySelector('.front')!, behind = tour.querySelector('.behind')!;
+  const tilt = -24 * Math.PI / 180;
+  let active = -1;
+  function place(p: number) {
+    nodes.forEach((n, i) => {
+      const a = Math.PI / 2 + (i - (p * 3 - .5)) * (2 * Math.PI / 3);
+      const ex = 190 * Math.cos(a), ey = 70 * Math.sin(a);
+      const x = 250 + ex * Math.cos(tilt) - ey * Math.sin(tilt), y = 250 + ex * Math.sin(tilt) + ey * Math.cos(tilt);
+      const depth = (Math.sin(a) + 1) / 2;
+      n.setAttribute('transform', `translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${(.7 + .6 * depth).toFixed(3)})`);
+      n.style.opacity = String(.35 + .65 * depth);
+      (depth > .5 ? front : behind).after(n); // paint in front of or behind the N
+    });
+    const next = Math.min(2, Math.floor(p * 3));
+    if (next !== active) {
+      active = next;
+      [nodes, panels, steps].forEach(list => list.forEach((el, i) => el.classList.toggle('on', i === active)));
+    }
+  }
+  if (reduce) place(0.17);
+  else {
+    tour.classList.add('live');
+    const onScroll = () => {
+      const r = tour.getBoundingClientRect();
+      place(Math.max(0, Math.min(.999, -r.top / (r.height - innerHeight))));
+    };
+    addEventListener('scroll', onScroll, { passive: true }); addEventListener('resize', onScroll); onScroll();
+  }
+
+  // Agent session types itself out when it scrolls into view; fully written at rest.
+  const term = document.getElementById('term')!;
+  if (!reduce) {
+    const lines = [...term.childNodes].reduce<Node[][]>((acc, node) => {
+      const parts = node.nodeType === 3 ? node.textContent!.split(/(\n)/) : [node];
+      parts.forEach(p => {
+        if (p === '\n') acc.push([]);
+        else if (typeof p === 'string') { if (p) acc[acc.length - 1].push(document.createTextNode(p)); }
+        else acc[acc.length - 1].push(p);
+      });
+      return acc;
+    }, [[]]);
+    const run = () => {
+      term.textContent = '';
+      const caret = document.createElement('span'); caret.className = 'caret';
+      let li = 0;
+      const typeLine = () => {
+        if (li >= lines.length) { term.append(caret); setTimeout(run, 7000); return; }
+        const line = lines[li].map(n => n.cloneNode(true));
+        const isCmd = (line[0] as HTMLElement).className === 'p';
+        if (li) term.append('\n');
+        if (!isCmd) { line.forEach(n => term.append(n)); li++; setTimeout(typeLine, 500); return; }
+        term.append(line[0]);
+        const text = line.slice(1).map(n => n.textContent).join('');
+        const t = document.createTextNode(''); term.append(t, caret);
+        let i = 0;
+        const step = () => {
+          t.textContent = text.slice(0, ++i);
+          if (i < text.length) setTimeout(step, 28 + Math.random() * 50);
+          else { caret.remove(); li++; setTimeout(typeLine, 350); }
+        };
+        step();
+      };
+      typeLine();
+    };
+    new IntersectionObserver((es, o) => { if (es[0].isIntersecting) { o.disconnect(); run(); } }, { threshold: .6 }).observe(term);
+  }
+</script>

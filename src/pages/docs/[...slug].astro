@@ -1,0 +1,96 @@
+---
+import Base from '../../layouts/Base.astro';
+import { NAV, REPO, docHref, docSlug } from '../../lib/docs.mjs';
+
+export function getStaticPaths() {
+  const files = import.meta.glob('../../docs/**/*.md', { eager: true });
+  return Object.entries(files).map(([file, mod]) => {
+    const rel = file.replace('../../docs/', '');
+    return { params: { slug: docSlug(rel) || undefined }, props: { rel, mod } };
+  });
+}
+
+const { rel, mod } = Astro.props;
+const { Content } = mod;
+const headings = mod.getHeadings();
+const slug = docSlug(rel);
+const title = (headings.find((h) => h.depth === 1)?.text ?? 'Docs').replace(/^\P{L}+/u, '').trim();
+const toc = headings.filter((h) => h.depth === 2);
+
+const all = Object.keys(import.meta.glob('../../docs/**/*.md')).map((f) => docSlug(f.replace('../../docs/', '')));
+const listed = new Set(NAV.flatMap(([, items]) => items.map(([s]) => s)));
+const more = all.filter((s) => !listed.has(s)).map((s) => [s, s.split('/').pop()]);
+const nav = more.length ? [...NAV, ['More', more]] : NAV;
+---
+<Base title={slug ? `${title} · Nexus docs` : 'Nexus docs'} description={`Nexus documentation: ${title}. How to set up and run the Nexus ecosystem.`}>
+  <div class="wrap docs">
+    <aside class="docs-nav" aria-label="Documentation">
+      <a class="docs-home" href={docHref('')}>Nexus docs</a>
+      {nav.map(([group, items]) => (
+        <div class="group">
+          <span class="group-h">{group}</span>
+          <ul>
+            {items.map(([s, label]) => (
+              <li><a href={docHref(s)} aria-current={s === slug ? 'page' : undefined}>{label}</a></li>
+            ))}
+          </ul>
+        </div>
+      ))}
+      <a class="repo" href={REPO} rel="noopener">ljcatherine/Nexus on GitHub ↗</a>
+    </aside>
+
+    <article class="prose">
+      <Content />
+      <p class="edit"><a href={`${REPO}/blob/main/docs/${rel}`} rel="noopener">Edit this page on GitHub ↗</a></p>
+    </article>
+
+    {toc.length > 1 && (
+      <nav class="toc" aria-label="On this page">
+        <span class="group-h">On this page</span>
+        <ul>{toc.map((h) => <li><a href={`#${h.slug}`}>{h.text}</a></li>)}</ul>
+      </nav>
+    )}
+  </div>
+</Base>
+
+<style>
+  .docs{display:grid;grid-template-columns:220px minmax(0,1fr) 200px;gap:40px;align-items:start;padding-block:40px 96px}
+  .docs-nav,.toc{position:sticky;top:calc(env(safe-area-inset-top,0px) + 80px);display:grid;gap:18px;font-size:14px;max-height:calc(100vh - 110px);overflow:auto}
+  .docs-home{font:700 18px var(--display);color:var(--text);text-decoration:none}
+  .group{display:grid;gap:6px}
+  .group-h{font:500 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+  .docs-nav ul,.toc ul{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+  .docs-nav a:not(.docs-home):not(.repo),.toc a{display:block;padding:5px 10px;border-radius:8px;color:var(--muted);text-decoration:none;border-left:2px solid transparent}
+  .docs-nav a:hover,.toc a:hover{color:var(--text);background:rgba(255,255,255,.04)}
+  .docs-nav a[aria-current]{color:var(--text);background:color-mix(in srgb,var(--accent) 12%,transparent);border-left-color:var(--accent)}
+  .repo{font-size:13px;color:var(--accent)}
+  .toc a{padding:3px 10px;font-size:13px}
+
+  .prose{min-width:0;max-width:78ch;font-size:16px;line-height:1.7}
+  .prose :global(h1){font-size:clamp(34px,5vw,48px);margin-bottom:20px}
+  .prose :global(h2){font-size:clamp(24px,3vw,30px);margin:48px 0 14px;padding-top:12px;border-top:1px solid var(--border);scroll-margin-top:90px}
+  .prose :global(h3){font-size:19px;margin:32px 0 10px;scroll-margin-top:90px}
+  .prose :global(h4){font:600 15px var(--body);margin:24px 0 8px}
+  .prose :global(p),.prose :global(li){color:color-mix(in srgb,var(--text) 86%,var(--muted))}
+  .prose :global(p){margin:0 0 14px;max-width:none}
+  .prose :global(a){color:var(--accent);text-underline-offset:3px}
+  .prose :global(ul),.prose :global(ol){padding-left:22px;margin:0 0 16px;display:grid;gap:4px}
+  .prose :global(strong){color:var(--text)}
+  .prose :global(code){font:13.5px var(--mono);background:var(--editor);border:1px solid var(--border);border-radius:6px;padding:1px 6px}
+  .prose :global(pre){margin:0 0 18px;padding:16px;border-radius:12px;border:1px solid var(--border);overflow-x:auto;font:13px/1.6 var(--mono);background:var(--editor)!important}
+  .prose :global(pre code){background:none;border:0;padding:0;font-size:inherit}
+  .prose :global(blockquote){margin:0 0 16px;padding:10px 16px;border-left:3px solid var(--accent);background:var(--surface);border-radius:0 10px 10px 0}
+  .prose :global(blockquote p){margin:0}
+  .prose :global(table){display:block;overflow-x:auto;border-collapse:collapse;margin:0 0 20px;font-size:14px;max-width:100%}
+  .prose :global(th){text-align:left;font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--dim);padding:10px 14px;border-bottom:1px solid var(--border);white-space:nowrap}
+  .prose :global(td){padding:10px 14px;border-bottom:1px solid color-mix(in srgb,var(--border) 60%,transparent);vertical-align:top}
+  .prose :global(hr){border:0;border-top:1px solid var(--border);margin:32px 0}
+  .edit{margin-top:48px!important;font-size:14px}
+
+  @media (max-width:1100px){ .docs{grid-template-columns:200px minmax(0,1fr)} .toc{display:none} }
+  @media (max-width:760px){
+    .docs{grid-template-columns:1fr;gap:24px;padding-block:24px 64px}
+    .docs-nav{position:static;max-height:none;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));padding-bottom:16px;border-bottom:1px solid var(--border)}
+    .docs-home,.repo{grid-column:1/-1}
+  }
+</style>

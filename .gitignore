@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.astro/
+.wrangler/
+wrangler.jsonc
+.dev.vars
+.claude/
+mockups/

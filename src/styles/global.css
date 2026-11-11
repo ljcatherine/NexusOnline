@@ -1,0 +1,104 @@
+/* Midnight Liquid Glass, from NexusWindows crates/nexus-ui. Single dark theme: it is the Nexus brand. */
+:root{
+  color-scheme: dark;
+  --bg:#070C18; --surface:#172137; --elevated:#202B42; --editor:#0A1020; --border:#28354A;
+  --text:#E9EDF7; --muted:#A6AFC2; --dim:#6F7A92;
+  --accent:#9CBCFF; --purple:#C9ADFF;
+  --ok:#7CE8CA; --warn:#F1C07E; --err:#FF93A2;
+  --glow-a:#27457F; --glow-b:#1B3A63; --glow-c:#34276E;
+  --display:"Bricolage Grotesque", "Space Grotesk", system-ui, sans-serif;
+  --body:"Geist", "Inter", system-ui, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, Consolas, monospace;
+  --glass:linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.02));
+  --edge:inset 0 1px 0 rgba(255,255,255,.14);
+  --gutter:max(16px, env(safe-area-inset-left, 0px));
+  --gutter-r:max(16px, env(safe-area-inset-right, 0px));
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 var(--body);padding-left:var(--gutter);padding-right:var(--gutter-r);overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:60;background:var(--bg)}
+img{max-width:100%}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px}
+::selection{background:color-mix(in srgb,var(--accent) 35%,transparent)}
+
+#stars{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.aura{position:fixed;inset:-20vmax;z-index:0;pointer-events:none;
+  background:radial-gradient(40vmax 30vmax at 20% 10%, color-mix(in srgb,var(--glow-a) 70%,transparent), transparent 70%),
+             radial-gradient(35vmax 30vmax at 85% 30%, color-mix(in srgb,var(--glow-c) 60%,transparent), transparent 70%),
+             radial-gradient(40vmax 30vmax at 50% 95%, color-mix(in srgb,var(--glow-b) 60%,transparent), transparent 70%);
+  animation:drift 30s ease-in-out infinite alternate}
+@keyframes drift{to{transform:translate3d(3vmax,-2vmax,0) rotate(4deg)}}
+main,nav,footer{position:relative;z-index:1}
+.wrap{max-width:1120px;margin:0 auto}
+
+#progress{position:fixed;top:env(safe-area-inset-top,0px);left:0;height:2px;width:100%;transform-origin:0 50%;transform:scaleX(0);z-index:70;background:linear-gradient(90deg,var(--accent),var(--purple))}
+nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:50;margin-left:calc(-1 * var(--gutter));margin-right:calc(-1 * var(--gutter-r));
+  padding:12px var(--gutter-r) 12px var(--gutter);
+  background:color-mix(in srgb,var(--bg) 72%,transparent);backdrop-filter:blur(14px) saturate(140%);-webkit-backdrop-filter:blur(14px) saturate(140%);
+  border-bottom:1px solid color-mix(in srgb,var(--border) 60%,transparent)}
+nav .wrap{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font:600 16px var(--display);color:var(--text);text-decoration:none}
+.brand img{width:28px;height:28px;border-radius:8px}
+nav .links{display:flex;gap:18px;margin-left:auto;flex-wrap:wrap;align-items:center}
+nav .links a{color:var(--muted);text-decoration:none;font-size:13.5px}
+nav .links a:hover,nav .links a[aria-current="page"]{color:var(--text)}
+nav .links a.btn{color:var(--bg);padding:7px 14px;font-size:13px}
+
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;letter-spacing:-.02em}
+h1{font-size:clamp(44px,8vw,104px);line-height:.95;font-weight:800}
+h2{font-size:clamp(30px,4.4vw,52px);line-height:1.04;font-weight:800}
+h3{font-size:20px;font-weight:600;letter-spacing:-.01em}
+p{max-width:65ch}
+.eyebrow{font:500 12px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+.lede{font-size:18px;color:var(--muted);max-width:60ch;margin:0}
+.mono{font-family:var(--mono);font-size:.88em}
+.grad{background:linear-gradient(100deg,var(--text) 10%,var(--accent) 50%,var(--purple) 90%);-webkit-background-clip:text;background-clip:text;color:transparent;background-size:200% 100%;animation:sheen 8s ease-in-out infinite alternate}
+@keyframes sheen{to{background-position:100% 0}}
+
+section{padding-block:96px}
+.sec-head{display:grid;gap:14px;margin-bottom:44px}
+
+.chips{display:flex;gap:10px;flex-wrap:wrap}
+.chip{font:500 12.5px var(--mono);color:var(--muted);padding:7px 12px;border-radius:99px;background:var(--glass);box-shadow:var(--edge);border:1px solid var(--border);display:inline-flex;gap:8px;align-items:center}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok);animation:pulse 2s infinite}
+.dot.warn{background:var(--warn);box-shadow:0 0 10px var(--warn)}
+@keyframes pulse{50%{opacity:.35}}
+.cta{display:flex;gap:12px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:8px;font:600 14px var(--body);padding:12px 18px;border-radius:12px;text-decoration:none;border:1px solid var(--border);color:var(--text);background:var(--glass);box-shadow:var(--edge);transition:transform .2s, border-color .2s;cursor:pointer}
+.btn.primary{background:linear-gradient(135deg,var(--accent),var(--purple));color:var(--bg);border-color:transparent}
+.btn:hover{transform:translateY(-2px);border-color:var(--accent)}
+.pill{justify-self:start;font:600 10.5px var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:99px;white-space:nowrap}
+.pill.ok{color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,transparent)}
+.pill.warn{color:var(--warn);background:color-mix(in srgb,var(--warn) 12%,transparent)}
+.pill.info{color:var(--purple);background:color-mix(in srgb,var(--purple) 14%,transparent)}
+
+.glass{position:relative;background:var(--glass),var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:var(--edge),0 20px 50px -20px rgba(0,0,0,.6);overflow:hidden}
+.glass::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .3s;
+  background:radial-gradient(260px circle at var(--mx,50%) var(--my,50%),rgba(156,188,255,.14),transparent 60%)}
+.glass:hover::after{opacity:1}
+
+footer{padding-block:40px 60px;color:var(--dim);font:400 12.5px var(--mono);border-top:1px solid var(--border)}
+footer .wrap{display:flex;gap:12px 24px;flex-wrap:wrap;justify-content:space-between}
+footer a{color:var(--muted)}
+
+/* Scroll-driven reveals. Resting state is fully visible; browsers without view timelines just show it. */
+@supports (animation-timeline: view()){
+  .reveal{animation:rise linear both;animation-timeline:view();animation-range:entry 0% entry 55%}
+  .tilt-in{animation:tiltin linear both;animation-timeline:view();animation-range:entry 0% cover 40%}
+}
+@keyframes rise{from{opacity:.15;transform:translateY(48px) scale(.98)}}
+@keyframes tiltin{from{transform:perspective(1600px) rotateX(22deg) translateY(60px) scale(.94);opacity:.4}}
+
+@media (max-width:560px){
+  nav .links a:not(.btn){display:none}
+  section{padding-block:64px}
+}
+/* Motion follows <html data-motion> (public/motion.js: the visitor's choice, else the system setting). */
+html[data-motion="off"] *,html[data-motion="off"] *::before,html[data-motion="off"] *::after{animation:none!important;transition:none!important}
+html[data-motion="off"]{scroll-behavior:auto}
+@media (prefers-reduced-motion:reduce){
+  html:not([data-motion]) *,html:not([data-motion]) *::before,html:not([data-motion]) *::after{animation:none!important;transition:none!important}
+}
+.motion-toggle{background:none;border:0;padding:0;font:inherit;color:var(--muted);text-decoration:underline;cursor:pointer}
