@@ -328,7 +328,7 @@ footer{padding-block:40px 60px;color:var(--dim);font:400 12.5px var(--mono);bord
           <rect class="box" x="220" y="45" width="110" height="50" rx="10"/><text class="boxt" x="232" y="67">Cloudflare</text><text class="boxs" x="232" y="84">Access · PKCE</text>
           <rect class="box" x="430" y="45" width="120" height="50" rx="10" style="stroke:#9CBCFF"/><text class="boxt" x="444" y="67">Nexus gateway</text><text class="boxs" x="444" y="84">Debian</text>
           <rect class="box" x="430" y="160" width="120" height="50" rx="10"/><text class="boxt" x="444" y="182">nexus-ro</text><text class="boxs" x="444" y="199">RO catalog</text>
-          <rect class="box" x="20" y="290" width="120" height="50" rx="10"/><text class="boxt" x="34" y="312">PS5LM Plus</text><text class="boxs" x="34" y="329">models · chat</text>
+          <rect class="box" x="20" y="290" width="120" height="50" rx="10"/><text class="boxt" x="34" y="312">NexusAI</text><text class="boxs" x="34" y="329">models · chat</text>
           <rect class="box" x="160" y="290" width="120" height="50" rx="10"/><text class="boxt" x="174" y="312">NixOS host</text><text class="boxs" x="174" y="329">metrics</text>
           <rect class="box" x="300" y="290" width="120" height="50" rx="10"/><text class="boxt" x="314" y="312">systemd</text><text class="boxs" x="314" y="329">services · logs</text>
           <rect class="box" x="440" y="290" width="110" height="50" rx="10"/><text class="boxt" x="452" y="312">Minecraft</text><text class="boxs" x="452" y="329">status</text>
@@ -352,7 +352,7 @@ footer{padding-block:40px 60px;color:var(--dim);font:400 12.5px var(--mono);bord
       <div class="glass page spot reveal"><span class="path">/app</span><h3>Overview</h3><p>Host cards, live sparklines, low-resource alerts at 90%.</p><span class="pill ro">Read-only</span></div>
       <div class="glass page spot reveal"><span class="path">/app/hosts/:id</span><h3>Host detail</h3><p>CPU, memory, disk, network, NVIDIA, uptime and history.</p><span class="pill ro">Read-only</span></div>
       <div class="glass page spot reveal"><span class="path">/app/services</span><h3>Services &amp; logs</h3><p>systemd units, status and <span class="mono">journalctl</span> tails from the catalog.</p><span class="pill ro">Read-only</span></div>
-      <div class="glass page spot reveal"><span class="path">/app/ai</span><h3>AI console</h3><p>PS5LM Plus chat over the gateway, model list, context meter.</p><span class="pill ro">Read-only</span></div>
+      <div class="glass page spot reveal"><span class="path">/app/ai</span><h3>AI console</h3><p>NexusAI chat over the gateway, model list, context meter.</p><span class="pill ro">Read-only</span></div>
       <div class="glass page spot reveal"><span class="path">/app/minecraft</span><h3>Minecraft</h3><p>Server status and a link out to the Worker panel.</p><span class="pill ro">Read-only</span></div>
       <div class="glass page spot reveal"><span class="path">/app/security</span><h3>Security</h3><p>Audit log, pinned host keys, owner unlock with phone code.</p><span class="pill gate">Owner unlock</span></div>
     </div>
@@ -364,7 +364,7 @@ footer{padding-block:40px 60px;color:var(--dim);font:400 12.5px var(--mono);bord
     <div class="phases">
       <div class="glass phase reveal"><span class="n">1</span><h3>Front page</h3><ul><li>Landing + downloads</li><li>All scroll animations</li><li>Static, Cloudflare Pages</li></ul></div>
       <div class="glass phase reveal"><span class="n">2</span><h3>Read-only app</h3><ul><li>Access sign-in</li><li>Overview, hosts, services</li><li>Live telemetry polling</li></ul></div>
-      <div class="glass phase reveal"><span class="n">3</span><h3>AI console</h3><ul><li>PS5LM chat, streaming</li><li>Model list + status</li><li>Local history only</li></ul></div>
+      <div class="glass phase reveal"><span class="n">3</span><h3>AI console</h3><ul><li>NexusAI chat, streaming</li><li>Model list + status</li><li>Local history only</li></ul></div>
       <div class="glass phase reveal"><span class="n">4</span><h3>Owner unlock</h3><ul><li>Phone code check</li><li>30-min write window</li><li>Audit log view</li></ul></div>
     </div>
     <div class="glass stack reveal">
@@ -406,7 +406,7 @@ footer{padding-block:40px 60px;color:var(--dim);font:400 12.5px var(--mono);bord
       <div class="glass frame tilt-in" data-tilt>
         <div class="chrome"><i></i><i></i><i></i><span class="url">nexus.yourdomain/app/ai</span></div>
         <div class="chat">
-          <div class="chat-top"><span class="chip">PS5LM Plus · qwen2.5-14b</span><span class="chip"><span class="dot"></span>via gateway</span>
+          <div class="chat-top"><span class="chip">NexusAI · qwen2.5-14b</span><span class="chip"><span class="dot"></span>via gateway</span>
             <div class="meter">context <div class="bar"><i id="ctx" style="--v:31%;--c:var(--purple)"></i></div><span id="ctxn">31%</span></div></div>
           <div class="msgs">
             <div class="msg me">Why is nixos-lab's disk filling up?</div>
@@ -563,7 +563,7 @@ if (!reduce) document.querySelectorAll('[data-tilt]').forEach(el => {
 const HOSTS = [
   {id:'debian-gw', sub:'gateway · 10.0.0.2', cpu:18, mem:46, disk:38, color:'#9CBCFF'},
   {id:'nixos-lab', sub:'NixOS 25.05 · 10.0.0.7', cpu:42, mem:61, disk:91, color:'#F1C07E', warn:true},
-  {id:'ps5lm', sub:'PS5LM Plus · 2 models', cpu:73, mem:82, disk:54, color:'#C9ADFF'},
+  {id:'ps5lm', sub:'NexusAI · 2 models', cpu:73, mem:82, disk:54, color:'#C9ADFF'},
   {id:'minecraft', sub:'paper 1.21 · 3 online', cpu:27, mem:58, disk:22, color:'#7CE8CA'},
 ];
 const hostHTML = h => `

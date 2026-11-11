@@ -18,7 +18,7 @@ export function mount(root: HTMLElement): Cleanup {
   const live = h('span', { class: 'chip' }, h('span', { class: 'dot' }), 'Updating');
   root.append(viewHeader('Overview', 'Live status from the Nexus gateway. Refreshes every 5 seconds while this tab is open.', live));
 
-  const inference = stat('PS5LM inference', true);
+  const inference = stat('NexusAI inference', true);
   const canvas = h('canvas', { class: 'spark', 'aria-label': 'Generation speed over the last few minutes' });
   inference.extra.append(canvas);
   const context = stat('Context in use');

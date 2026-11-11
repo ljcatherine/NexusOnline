@@ -5,3 +5,4 @@ dist/
 wrangler.jsonc
 .dev.vars
 .claude/
+mockups/

@@ -50,7 +50,7 @@ export function mount(root: HTMLElement): Cleanup {
     h('section', { class: 'card prefs' },
       h('h2', {}, 'This device'),
       h('label', { class: 'check', for: 'pref-keep' }, keep, h('span', {}, h('b', {}, 'Keep chats after closing the tab'), h('small', {}, 'Off by default so nothing stays on a computer that isn\'t yours.'))),
-      h('label', { class: 'check', for: 'pref-motion' }, motion, h('span', {}, h('b', {}, 'Animations'), h('small', {}, 'Follows your system setting until you change it here.'))),
+      h('label', { class: 'check', for: 'pref-motion' }, motion, h('span', {}, h('b', {}, 'Animations'), h('small', {}, 'On by default. Turn them off here if you prefer a still page.'))),
       h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn', onclick: () => { clearLocalData(); keep.checked = false; cleared.textContent = 'Chats and settings cleared from this browser.'; } }, 'Clear chats from this browser'), cleared))));
   return () => clearInterval(timer);
 }

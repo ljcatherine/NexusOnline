@@ -4,7 +4,7 @@ The browser client for the Nexus ecosystem, next to the Nexus iPhone app and
 Nexus Desktop. Live at **https://nexus.liamjc.dev**.
 
 - **`/`** is a public landing page with scroll animations.
-- **`/app`** is an owner-only web app: PS5LM Plus status, AI chat, read-only
+- **`/app`** is an owner-only web app: NexusAI status, AI chat, read-only
   workspace files, PS5 models, agent runs and a security page.
 
 It runs as one Cloudflare Worker that serves the built Astro site and proxies
@@ -13,7 +13,7 @@ a small set of read-only routes to the Nexus gateway on Debian.
 ## How it is secured
 
 ```
-Browser ──► Cloudflare Access ──► nexus-online Worker ──► VPC service ──► Nexus gateway (Debian) ──► PS5LM / orchestrator
+Browser ──► Cloudflare Access ──► nexus-online Worker ──► VPC service ──► Nexus gateway (Debian) ──► NexusAI / orchestrator
             (owner sign-in)       (token check + allowlist)                (token check + permissions)
 ```
 
@@ -80,7 +80,7 @@ owner email and VPC service ID, then run `npm run deploy` (tests, build, deploy)
 
 ## Known issues
 
-- `/v1/models` and `/v1/context` return 502 from the gateway against PS5LM v0.8.3,
+- `/v1/models` and `/v1/context` return 502 from the gateway against NexusAI v0.8.3,
   while chat works. The chat model picker falls back to the PS5's loaded model,
   and the context meter stays blank.
 - Synced iPhone conversations return 403: the gateway does not grant the web

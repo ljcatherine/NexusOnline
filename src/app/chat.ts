@@ -37,7 +37,7 @@ export function mount(root: HTMLElement): Cleanup {
   const searchBox = h('input', { type: 'checkbox', id: 'chat-search' });
   const meter = h('span', { class: 'meter-n' }, '');
   const meterBar = h('i', {});
-  root.append(viewHeader('AI chat', 'PS5LM Plus through the gateway. Replies stream as they are written.',
+  root.append(viewHeader('AI chat', 'NexusAI through the gateway. Replies stream as they are written.',
     h('div', { class: 'chat-tools' },
       modelSelect,
       h('label', { class: 'check', for: 'chat-search' }, searchBox, 'Search the web first'),
@@ -79,7 +79,7 @@ export function mount(root: HTMLElement): Cleanup {
   function renderThread() {
     const shown = current?.messages.filter(m => m.role !== 'system') ?? [];
     thread.replaceChildren(...(shown.length ? shown.map(bubble) : [h('div', { class: 'empty' },
-      h('h2', {}, 'Ask PS5LM Plus'),
+      h('h2', {}, 'Ask NexusAI'),
       h('p', {}, 'Try “Explain what nexus-ro allows”, or open a file in Files and choose Ask AI about this file.'))]));
     thread.scrollTop = thread.scrollHeight;
   }
@@ -192,7 +192,7 @@ export function mount(root: HTMLElement): Cleanup {
   };
   api('/v1/models')
     .then(r => (Array.isArray(r?.data) ? r.data : []).map((m: any) => ({ id: String(m.id), label: String(m.id) })))
-    // The gateway's model list can fail against PS5LM while chat still works: fall back to the PS5's loaded model.
+    // The gateway's model list can fail against NexusAI while chat still works: fall back to the PS5's loaded model.
     .catch(() => api('/v1/nexus/models').then(r => (Array.isArray(r?.models) ? r.models : [])
       .filter((m: any) => m.current).map((m: any) => ({ id: String(m.id), label: String(m.label ?? m.id) }))))
     .then(setModels)

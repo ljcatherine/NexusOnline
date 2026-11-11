@@ -51,7 +51,7 @@ const FILES = {
   cmd: [{ name: 'main.go', path: 'cmd/main.go', kind: 'file' }],
 };
 const TEXT = {
-  'README.md': '# nexus-gateway (sample)\n\nPrivate gateway for the Nexus apps.\nRuns on Debian behind Cloudflare Access.\n\n- /v1/chat/completions proxies PS5LM Plus\n- /v1/nexus/* talks to the agent orchestrator\n',
+  'README.md': '# nexus-gateway (sample)\n\nPrivate gateway for the Nexus apps.\nRuns on Debian behind Cloudflare Access.\n\n- /v1/chat/completions proxies NexusAI\n- /v1/nexus/* talks to the agent orchestrator\n',
   'go.mod': 'module example.com/nexus-gateway\n\ngo 1.23\n',
   'cmd/main.go': 'package main\n\nimport "log"\n\nfunc main() {\n\t// sample file for the local preview\n\tlog.Println("nexus-gateway starting")\n}\n',
   '.env': 'SAMPLE_SECRET=not-a-real-value\n',
@@ -86,7 +86,7 @@ function gateway(req) {
   const ctx = p.match(/^\/v1\/nexus\/workspaces\/(debian|nixos)\/([^/]+)\/context$/);
   if (ctx) { const path = u.searchParams.get('path'); const text = TEXT[path]; return text === undefined ? Response.json({ error: 'not found' }, { status: 404 }) : Response.json({ host: ctx[1], workspace_id: ctx[2], path, text, size_bytes: Buffer.byteLength(text) }); }
   if (p === '/v1/chat/completions') {
-    const words = 'This is the local preview, so this reply is sample text streamed word by word. On the real site it comes from PS5LM Plus through the gateway.\n\n```\nnexus-ro --root /usr/share/doc\n```'.split(/(?<= )/);
+    const words = 'This is the local preview, so this reply is sample text streamed word by word. On the real site it comes from NexusAI through the gateway.\n\n```\nnexus-ro --root /usr/share/doc\n```'.split(/(?<= )/);
     const stream = new ReadableStream({ async start(c) {
       for (const w of words) { c.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ choices: [{ delta: { content: w } }] })}\n\n`)); await new Promise(r => setTimeout(r, 35)); }
       c.enqueue(new TextEncoder().encode('data: [DONE]\n\n')); c.close();
