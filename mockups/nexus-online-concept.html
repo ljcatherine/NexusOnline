@@ -1,0 +1,645 @@
+<title>Nexus Online</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Geist:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one long scroll — orbit hero, plan, four framed mockups that tilt into place, motion spec. Midnight Liquid Glass, single dark theme by choice (it is the Nexus brand). */
+:root{
+  color-scheme: dark;
+  --bg:#070C18; --surface:#172137; --elevated:#202B42; --editor:#0A1020; --border:#28354A;
+  --text:#E9EDF7; --muted:#A6AFC2; --dim:#6F7A92;
+  --accent:#9CBCFF; --purple:#C9ADFF;
+  --ok:#7CE8CA; --warn:#F1C07E; --err:#FF93A2;
+  --glow-a:#27457F; --glow-b:#1B3A63; --glow-c:#34276E;
+  --display:"Bricolage Grotesque", "Space Grotesk", system-ui, sans-serif;
+  --body:"Geist", "Inter", system-ui, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, Consolas, monospace;
+  --glass:linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.02));
+  --edge:inset 0 1px 0 rgba(255,255,255,.14);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg); color:var(--text); font:15px/1.6 var(--body);
+  padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px));
+  overflow-x:hidden;
+}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:60;background:var(--bg)}
+#stars{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.aura{position:fixed;inset:-20vmax;z-index:0;pointer-events:none;
+  background:radial-gradient(40vmax 30vmax at 20% 10%, color-mix(in srgb,var(--glow-a) 70%,transparent), transparent 70%),
+             radial-gradient(35vmax 30vmax at 85% 30%, color-mix(in srgb,var(--glow-c) 60%,transparent), transparent 70%),
+             radial-gradient(40vmax 30vmax at 50% 95%, color-mix(in srgb,var(--glow-b) 60%,transparent), transparent 70%);
+  animation:drift 30s ease-in-out infinite alternate}
+@keyframes drift{to{transform:translate3d(3vmax,-2vmax,0) rotate(4deg)}}
+main,nav,footer{position:relative;z-index:1}
+.wrap{max-width:1120px;margin:0 auto}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px}
+
+/* progress + nav */
+#progress{position:fixed;top:env(safe-area-inset-top,0px);left:0;height:2px;width:100%;transform-origin:0 50%;transform:scaleX(0);z-index:70;
+  background:linear-gradient(90deg,var(--accent),var(--purple))}
+nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:50;margin-inline:calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+  padding:12px max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px));
+  background:color-mix(in srgb,var(--bg) 72%,transparent);backdrop-filter:blur(14px) saturate(140%);border-bottom:1px solid color-mix(in srgb,var(--border) 60%,transparent)}
+nav .wrap{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font:600 16px var(--display);color:var(--text);text-decoration:none}
+.brand svg{width:28px;height:28px;border-radius:8px}
+nav .links{display:flex;gap:18px;margin-left:auto;flex-wrap:wrap}
+nav .links a{color:var(--muted);text-decoration:none;font-size:13.5px}
+nav .links a:hover{color:var(--text)}
+.tag{font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--purple);
+  border:1px solid color-mix(in srgb,var(--purple) 35%,transparent);padding:3px 8px;border-radius:99px}
+
+/* type */
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;letter-spacing:-.02em}
+h1{font-size:clamp(44px,8vw,104px);line-height:.95;font-weight:800}
+h2{font-size:clamp(30px,4.4vw,52px);line-height:1.02;font-weight:800}
+h3{font-size:20px;font-weight:600;letter-spacing:-.01em}
+.eyebrow{font:500 12px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+.lede{font-size:18px;color:var(--muted);max-width:60ch}
+p{max-width:65ch}
+.grad{background:linear-gradient(100deg,var(--text) 10%,var(--accent) 50%,var(--purple) 90%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  background-size:200% 100%;animation:sheen 8s ease-in-out infinite alternate}
+@keyframes sheen{to{background-position:100% 0}}
+
+section{padding-block:96px}
+.sec-head{display:grid;gap:14px;margin-bottom:44px}
+
+/* hero */
+.hero{padding-block:72px 64px;display:grid;grid-template-columns:1.15fr .85fr;gap:40px;align-items:center}
+.hero .copy{display:grid;gap:22px}
+.hero h1 .line{display:block;overflow:hidden;padding-bottom:.06em}
+.hero h1 .line span{display:inline-block;animation:lineup 1.1s cubic-bezier(.2,.8,.2,1) both}
+.hero h1 .line:nth-child(2) span{animation-delay:.12s}
+@keyframes lineup{from{transform:translateY(105%)}}
+.chips{display:flex;gap:10px;flex-wrap:wrap}
+.chip{font:500 12.5px var(--mono);color:var(--muted);padding:7px 12px;border-radius:99px;background:var(--glass);box-shadow:var(--edge);border:1px solid var(--border);display:flex;gap:8px;align-items:center}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok);animation:pulse 2s infinite}
+@keyframes pulse{50%{opacity:.35}}
+.cta{display:flex;gap:12px;flex-wrap:wrap}
+.btn{font:600 14px var(--body);padding:12px 18px;border-radius:12px;text-decoration:none;border:1px solid var(--border);color:var(--text);background:var(--glass);box-shadow:var(--edge);transition:transform .2s, border-color .2s}
+.btn.primary{background:linear-gradient(135deg,var(--accent),var(--purple));color:var(--bg);border-color:transparent}
+.btn:hover{transform:translateY(-2px);border-color:var(--accent)}
+.orbit-wrap{position:relative;aspect-ratio:1;max-width:100%}
+.orbit-wrap svg{width:100%;height:100%;overflow:visible}
+.orbit-wrap .ring{fill:none;stroke-width:1.5;stroke-dasharray:4 10;animation:spin linear infinite;transform-origin:50% 50%}
+@keyframes spin{to{transform:rotate(360deg)}}
+.draw{stroke-dasharray:1400;stroke-dashoffset:1400;animation:draw 2.2s .3s cubic-bezier(.6,0,.2,1) forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.node-label{font:600 13px var(--mono);fill:var(--muted)}
+
+/* glass card */
+.glass{position:relative;background:var(--glass),var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:var(--edge),0 20px 50px -20px rgba(0,0,0,.6);overflow:hidden}
+.spot::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .3s;
+  background:radial-gradient(260px circle at var(--mx,50%) var(--my,50%),rgba(156,188,255,.14),transparent 60%)}
+.spot:hover::after{opacity:1}
+
+/* plan */
+.split{display:grid;grid-template-columns:1fr 1fr;gap:28px}
+.diagram{padding:20px;overflow-x:auto}
+.diagram svg{min-width:520px;width:100%;height:auto;display:block}
+.flow{fill:none;stroke-width:2;stroke-dasharray:6 8;animation:flow 1.2s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-28}}
+.box{fill:var(--elevated);stroke:var(--border)}
+.boxt{font:600 13px var(--body);fill:var(--text)}
+.boxs{font:400 11px var(--mono);fill:var(--muted)}
+.rules{display:grid;gap:12px;align-content:start}
+.rule{padding:18px 20px;display:grid;grid-template-columns:auto 1fr;gap:6px 14px}
+.rule .ico{grid-row:span 2;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font:600 13px var(--mono);
+  background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent)}
+.rule p{margin:0;color:var(--muted);font-size:14px}
+
+.sitemap{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:28px}
+.page{padding:18px;display:grid;gap:8px;align-content:start;transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+.page:hover{transform:translateY(-4px)}
+.page .path{font:500 12px var(--mono);color:var(--accent)}
+.page p{margin:0;font-size:13.5px;color:var(--muted)}
+.pill{justify-self:start;font:600 10.5px var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:99px}
+.pill.ro{color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,transparent)}
+.pill.gate{color:var(--warn);background:color-mix(in srgb,var(--warn) 12%,transparent)}
+.pill.pub{color:var(--purple);background:color-mix(in srgb,var(--purple) 14%,transparent)}
+
+.phases{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:28px}
+.phase{padding:20px;display:grid;gap:10px;align-content:start}
+.phase .n{font:800 44px/1 var(--display);background:linear-gradient(180deg,var(--accent),transparent);-webkit-background-clip:text;background-clip:text;color:transparent}
+.phase ul{margin:0;padding-left:18px;color:var(--muted);font-size:13.5px;display:grid;gap:4px}
+.stack{margin-top:28px;padding:20px 22px;display:flex;flex-wrap:wrap;gap:10px 28px;font-size:14px}
+.stack b{font:500 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim);display:block}
+
+/* mockups */
+.mock{margin-block:0 120px;perspective:1600px}
+.mock-head{display:flex;gap:16px;align-items:end;justify-content:space-between;flex-wrap:wrap;margin-bottom:22px}
+.mock-head p{margin:0;color:var(--muted)}
+.frame{border-radius:16px;transform-style:preserve-3d;transition:transform .5s cubic-bezier(.2,.8,.2,1)}
+.chrome{display:flex;gap:7px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--border);background:rgba(0,0,0,.18)}
+.chrome i{width:10px;height:10px;border-radius:50%;background:var(--border)}
+.chrome .url{margin-left:14px;font:400 12px var(--mono);color:var(--dim);background:var(--editor);padding:4px 12px;border-radius:7px;flex:1;max-width:420px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.app{display:grid;grid-template-columns:200px 1fr;min-height:480px}
+.side{border-right:1px solid var(--border);padding:16px 10px;display:grid;gap:4px;align-content:start;background:rgba(0,0,0,.12)}
+.side a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;color:var(--muted);text-decoration:none;font-size:13.5px}
+.side a.on{background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--text);box-shadow:var(--edge)}
+.side a span{width:6px;height:6px;border-radius:2px;background:currentColor;opacity:.6}
+.pane{padding:22px;display:grid;gap:16px;align-content:start;min-width:0}
+.pane-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.pane-top h3{font-size:22px}
+.hosts{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.host{padding:16px;display:grid;gap:12px;background:var(--glass),var(--elevated)}
+.host-h{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.host-h b{font:600 15px var(--body)}
+.host-h small{display:block;font:400 11.5px var(--mono);color:var(--dim)}
+.state{font:600 10.5px var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:99px;white-space:nowrap}
+.state.ok{color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,transparent)}
+.state.warn{color:var(--warn);background:color-mix(in srgb,var(--warn) 12%,transparent)}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-variant-numeric:tabular-nums}
+.metric small{display:block;font:500 10.5px var(--mono);color:var(--dim);letter-spacing:.08em;text-transform:uppercase}
+.metric b{font:600 18px var(--mono)}
+.bar{height:4px;border-radius:2px;background:var(--editor);overflow:hidden;margin-top:4px}
+.bar i{display:block;height:100%;width:var(--v,40%);background:var(--c,var(--accent));transition:width .9s cubic-bezier(.2,.8,.2,1)}
+.spark{width:100%;height:46px;display:block}
+.alert{display:flex;gap:10px;align-items:center;padding:10px 14px;border-radius:12px;font-size:13.5px;
+  background:color-mix(in srgb,var(--warn) 10%,transparent);border:1px solid color-mix(in srgb,var(--warn) 30%,transparent);color:var(--warn)}
+
+/* ai mock */
+.chat{display:grid;grid-template-rows:auto 1fr auto;min-height:480px}
+.chat-top{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px 20px;border-bottom:1px solid var(--border)}
+.meter{margin-left:auto;display:flex;align-items:center;gap:8px;font:500 11.5px var(--mono);color:var(--dim)}
+.meter .bar{width:90px;margin:0}
+.msgs{padding:22px 20px;display:grid;gap:16px;align-content:start}
+.msg{max-width:72ch;padding:12px 16px;border-radius:14px;font-size:14px}
+.msg.me{justify-self:end;background:color-mix(in srgb,var(--accent) 16%,var(--elevated));border-bottom-right-radius:4px}
+.msg.ai{background:var(--elevated);border:1px solid var(--border);border-bottom-left-radius:4px;white-space:pre-wrap}
+.mono,.tool code{font-family:var(--mono);font-size:12.5px}
+.caret{display:inline-block;width:8px;height:15px;background:var(--accent);vertical-align:-2px;animation:pulse 1s steps(1) infinite}
+.tool{font:500 12px var(--mono);color:var(--muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 12px;border-radius:10px;border:1px dashed var(--border);justify-self:start}
+.composer{margin:0 20px 20px;display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:14px;background:var(--editor);border:1px solid var(--border)}
+.composer span{flex:1;color:var(--dim);font-size:14px}
+.modes{display:flex;gap:4px;font:500 11.5px var(--mono)}
+.modes em{font-style:normal;padding:4px 9px;border-radius:7px;color:var(--dim)}
+.modes em.on{background:var(--elevated);color:var(--text)}
+
+/* unlock mock */
+.unlock{display:grid;grid-template-columns:1fr 1fr;min-height:420px}
+.unlock .l{padding:32px;display:grid;gap:18px;align-content:center;border-right:1px solid var(--border)}
+.unlock .r{padding:32px;display:grid;place-items:center;gap:20px}
+.otp{display:flex;gap:10px}
+.otp b{width:54px;height:66px;display:grid;place-items:center;border-radius:14px;font:600 28px var(--mono);background:var(--editor);border:1px solid var(--border);transition:border-color .2s, transform .2s}
+.otp b.f{border-color:var(--accent);transform:translateY(-3px)}
+.ringbox{position:relative;width:120px;height:120px}
+.ringbox svg{transform:rotate(-90deg)}
+.ringbox div{position:absolute;inset:0;display:grid;place-items:center;font:600 26px var(--mono);font-variant-numeric:tabular-nums}
+.policy{display:grid;gap:8px;font:400 13px var(--mono)}
+.policy div{display:flex;justify-content:space-between;gap:12px;padding:8px 12px;border-radius:9px;background:var(--editor)}
+
+/* phone */
+.phone-row{display:grid;grid-template-columns:auto 1fr;gap:56px;align-items:center}
+.phone{width:300px;max-width:100%;border-radius:44px;padding:12px;background:#0B1220;border:1px solid var(--border);box-shadow:0 40px 80px -30px rgba(0,0,0,.8),var(--edge)}
+.phone .scr{border-radius:34px;overflow:hidden;background:var(--bg);padding:44px 14px 18px;display:grid;gap:12px;position:relative}
+.phone .scr::before{content:"";position:absolute;top:12px;left:50%;width:90px;height:24px;border-radius:14px;background:#000;transform:translateX(-50%)}
+.phone .host{padding:12px}
+.tabbar{display:flex;justify-content:space-around;padding:10px;border-radius:20px;background:var(--glass),var(--surface);border:1px solid var(--border);font:500 10.5px var(--mono);color:var(--dim)}
+.tabbar .on{color:var(--accent)}
+
+/* motion spec */
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:640px}
+th{text-align:left;font:500 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim);padding:12px 16px;border-bottom:1px solid var(--border)}
+td{padding:14px 16px;border-bottom:1px solid color-mix(in srgb,var(--border) 60%,transparent);vertical-align:top;color:var(--muted)}
+td:first-child{color:var(--text);font-weight:500}
+td code{font:400 12.5px var(--mono);color:var(--accent)}
+.qs{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.qs .glass{padding:18px 20px}
+.qs p{margin:6px 0 0;color:var(--muted);font-size:14px}
+footer{padding-block:40px 60px;color:var(--dim);font:400 12.5px var(--mono);border-top:1px solid var(--border)}
+
+/* scroll-driven reveals: resting state is fully visible; browsers without view timelines just show it */
+@supports (animation-timeline: view()){
+  .reveal{animation:rise linear both;animation-timeline:view();animation-range:entry 0% entry 55%}
+  .frame.tilt-in{animation:tiltin linear both;animation-timeline:view();animation-range:entry 0% cover 40%}
+  .hero .orbit-wrap{animation:sink linear both;animation-timeline:scroll(root);animation-range:0 80vh}
+}
+@keyframes rise{from{opacity:.15;transform:translateY(48px) scale(.98)}}
+@keyframes tiltin{from{transform:rotateX(22deg) translateY(60px) scale(.94);opacity:.4}}
+@keyframes sink{to{transform:translateY(120px) scale(.86);opacity:.3}}
+
+@media (max-width:900px){
+  .hero,.split,.unlock,.phone-row{grid-template-columns:1fr}
+  .orbit-wrap{max-width:420px;margin-inline:auto;width:100%}
+  .sitemap,.phases{grid-template-columns:repeat(2,1fr)}
+  .app{grid-template-columns:1fr}.side{display:none}
+  .unlock .l{border-right:0;border-bottom:1px solid var(--border)}
+  .phone{margin-inline:auto}
+}
+@media (max-width:560px){
+  .sitemap,.phases,.hosts,.qs{grid-template-columns:1fr}
+  nav .links{display:none}
+  section{padding-block:64px}
+  .otp b{width:44px;height:56px;font-size:22px}
+  .unlock .l,.unlock .r{padding:22px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  .draw{stroke-dashoffset:0}
+  html{scroll-behavior:auto}
+}
+</style>
+
+<canvas id="stars" aria-hidden="true"></canvas>
+<div class="aura" aria-hidden="true"></div>
+<div id="progress" aria-hidden="true"></div>
+
+<nav>
+  <div class="wrap">
+    <a class="brand" href="#top">
+      <svg viewBox="0 0 1024 1024" aria-hidden="true"><defs><radialGradient id="mi" cx="50%" cy="38%" r="75%"><stop offset="0" stop-color="#1D3566"/><stop offset=".55" stop-color="#0B1430"/><stop offset="1" stop-color="#060A16"/></radialGradient><linearGradient id="ar" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9CBCFF"/><stop offset="1" stop-color="#C9ADFF"/></linearGradient></defs><rect width="1024" height="1024" fill="url(#mi)"/><path d="M334 718V306L690 718V306" fill="none" stroke="#E9EDF7" stroke-width="92" stroke-linecap="round" stroke-linejoin="round"/><g transform="rotate(-24 512 512)"><path d="M140 512A372 136 0 0 0 884 512" fill="none" stroke="url(#ar)" stroke-width="26" stroke-linecap="round"/></g></svg>
+      Nexus Online
+    </a>
+    <span class="tag">Concept v0.1</span>
+    <div class="links">
+      <a href="#plan">Plan</a><a href="#pages">Pages</a><a href="#mockups">Mockups</a><a href="#motion">Motion</a><a href="#questions">Questions</a>
+    </div>
+  </div>
+</nav>
+
+<main id="top">
+  <!-- HERO: also mockup 1, the public landing page -->
+  <header class="wrap hero">
+    <div class="copy">
+      <div class="eyebrow">Mockup 1 · Public landing page</div>
+      <h1><span class="line"><span>Your whole lab,</span></span><span class="line"><span class="grad">one orbit.</span></span></h1>
+      <p class="lede">Nexus Online is the browser seat in the Nexus ecosystem. It sits beside the iPhone app and Nexus Desktop and reads the same hosts, the same telemetry and the same policy engine, from any machine you're signed in on.</p>
+      <div class="chips">
+        <span class="chip"><span class="dot"></span>4 hosts reporting</span>
+        <span class="chip">3 clients · iPhone · Desktop · Web</span>
+        <span class="chip">1 policy engine</span>
+      </div>
+      <div class="cta">
+        <a class="btn primary" href="#mockups">See the mockups</a>
+        <a class="btn" href="#plan">Read the plan</a>
+      </div>
+    </div>
+    <div class="orbit-wrap" role="img" aria-label="Animated Nexus orbit: iPhone, Desktop and Web circling the Orbit N">
+      <svg viewBox="0 0 500 500">
+        <defs>
+          <linearGradient id="arc2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9CBCFF"/><stop offset="1" stop-color="#C9ADFF"/></linearGradient>
+          <radialGradient id="core" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#1D3566"/><stop offset="1" stop-color="#070C18" stop-opacity="0"/></radialGradient>
+          <path id="orb" d="M60 250 A190 70 0 1 0 440 250 A190 70 0 1 0 60 250"/>
+        </defs>
+        <circle cx="250" cy="250" r="230" fill="url(#core)"/>
+        <circle class="ring" cx="250" cy="250" r="225" stroke="#28354A" style="animation-duration:120s"/>
+        <circle class="ring" cx="250" cy="250" r="175" stroke="#28354A" style="animation-duration:80s;animation-direction:reverse"/>
+        <g transform="rotate(-24 250 250)">
+          <use href="#orb" fill="none" stroke="#9CBCFF" stroke-opacity=".25" stroke-width="10"/>
+        </g>
+        <path class="draw" d="M163 352V148L337 352V148" fill="none" stroke="#E9EDF7" stroke-width="44" stroke-linecap="round" stroke-linejoin="round"/>
+        <g transform="rotate(-24 250 250)">
+          <path class="draw" d="M60 250A190 70 0 0 0 440 250" fill="none" stroke="url(#arc2)" stroke-width="11" stroke-linecap="round"/>
+          <circle r="15" fill="#9CBCFF"><animateMotion dur="14s" repeatCount="indefinite"><mpath href="#orb"/></animateMotion></circle>
+          <circle r="15" fill="#C9ADFF"><animateMotion dur="14s" begin="-4.67s" repeatCount="indefinite"><mpath href="#orb"/></animateMotion></circle>
+          <circle r="15" fill="#7CE8CA"><animateMotion dur="14s" begin="-9.33s" repeatCount="indefinite"><mpath href="#orb"/></animateMotion></circle>
+        </g>
+        <text class="node-label" x="20" y="470" style="fill:#9CBCFF">● iPhone</text>
+        <text class="node-label" x="150" y="470" style="fill:#C9ADFF">● Desktop</text>
+        <text class="node-label" x="290" y="470" style="fill:#7CE8CA">● Web (new)</text>
+      </svg>
+    </div>
+  </header>
+
+  <!-- PLAN -->
+  <section id="plan" class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">The plan</div>
+      <h2>A third client, not a second backend.</h2>
+      <p class="lede">The web interface talks to the Nexus gateway that already runs on Debian, through Cloudflare Access. It adds no new server and no new write paths. Anything Desktop refuses, the web refuses too.</p>
+    </div>
+    <div class="split">
+      <div class="glass diagram spot reveal">
+        <svg viewBox="0 0 560 360" role="img" aria-label="Browser goes through Cloudflare Access to the Nexus gateway on Debian, which reads hosts through nexus-ro">
+          <path class="flow" d="M110 70 H 220" stroke="#9CBCFF"/>
+          <path class="flow" d="M330 70 H 430" stroke="#9CBCFF"/>
+          <path class="flow" d="M490 95 V 160" stroke="#9CBCFF"/>
+          <path class="flow" d="M470 210 C 460 250, 380 250, 360 290" stroke="#7CE8CA"/>
+          <path class="flow" d="M500 210 V 290" stroke="#7CE8CA"/>
+          <path class="flow" d="M430 185 C 300 185, 240 230, 220 290" stroke="#7CE8CA"/>
+          <path class="flow" d="M430 185 C 200 185, 100 230, 80 290" stroke="#C9ADFF" style="animation-direction:reverse"/>
+          <rect class="box" x="10" y="45" width="100" height="50" rx="10"/><text class="boxt" x="24" y="67">Browser</text><text class="boxs" x="24" y="84">Nexus Online</text>
+          <rect class="box" x="220" y="45" width="110" height="50" rx="10"/><text class="boxt" x="232" y="67">Cloudflare</text><text class="boxs" x="232" y="84">Access · PKCE</text>
+          <rect class="box" x="430" y="45" width="120" height="50" rx="10" style="stroke:#9CBCFF"/><text class="boxt" x="444" y="67">Nexus gateway</text><text class="boxs" x="444" y="84">Debian</text>
+          <rect class="box" x="430" y="160" width="120" height="50" rx="10"/><text class="boxt" x="444" y="182">nexus-ro</text><text class="boxs" x="444" y="199">RO catalog</text>
+          <rect class="box" x="20" y="290" width="120" height="50" rx="10"/><text class="boxt" x="34" y="312">PS5LM Plus</text><text class="boxs" x="34" y="329">models · chat</text>
+          <rect class="box" x="160" y="290" width="120" height="50" rx="10"/><text class="boxt" x="174" y="312">NixOS host</text><text class="boxs" x="174" y="329">metrics</text>
+          <rect class="box" x="300" y="290" width="120" height="50" rx="10"/><text class="boxt" x="314" y="312">systemd</text><text class="boxs" x="314" y="329">services · logs</text>
+          <rect class="box" x="440" y="290" width="110" height="50" rx="10"/><text class="boxt" x="452" y="312">Minecraft</text><text class="boxs" x="452" y="329">status</text>
+        </svg>
+      </div>
+      <div class="rules">
+        <div class="glass rule spot reveal"><div class="ico">RO</div><h3>Read-only by default</h3><p>Every request goes through the same <span class="mono">nexus-security</span> catalog Desktop uses. Debian writes stay blocked; agents never get them.</p></div>
+        <div class="glass rule spot reveal"><div class="ico">ID</div><h3>Access is the front door</h3><p>Cloudflare Access with PKCE, the same flow the iPhone app uses. The site itself holds no passwords or SSH keys.</p></div>
+        <div class="glass rule spot reveal"><div class="ico">20s</div><h3>Owner unlock needs the phone</h3><p>The 4-digit, 20-second code from the iPhone app opens a 30-minute write window, matching Desktop.</p></div>
+        <div class="glass rule spot reveal"><div class="ico">↓</div><h3>Also the public front page</h3><p>Signed-out visitors see the landing page and Desktop downloads with SHA-256 sums. Everything else sits behind Access.</p></div>
+      </div>
+    </div>
+
+    <div id="pages" class="sec-head reveal" style="margin-top:96px">
+      <div class="eyebrow">Sitemap</div>
+      <h2>Eight pages, three access levels.</h2>
+    </div>
+    <div class="sitemap">
+      <div class="glass page spot reveal"><span class="path">/</span><h3>Landing</h3><p>Orbit hero, what each client does, how the pieces fit.</p><span class="pill pub">Public</span></div>
+      <div class="glass page spot reveal"><span class="path">/download</span><h3>Downloads</h3><p>MSI, portable zip and exe per release, with checksums and changelog.</p><span class="pill pub">Public</span></div>
+      <div class="glass page spot reveal"><span class="path">/app</span><h3>Overview</h3><p>Host cards, live sparklines, low-resource alerts at 90%.</p><span class="pill ro">Read-only</span></div>
+      <div class="glass page spot reveal"><span class="path">/app/hosts/:id</span><h3>Host detail</h3><p>CPU, memory, disk, network, NVIDIA, uptime and history.</p><span class="pill ro">Read-only</span></div>
+      <div class="glass page spot reveal"><span class="path">/app/services</span><h3>Services &amp; logs</h3><p>systemd units, status and <span class="mono">journalctl</span> tails from the catalog.</p><span class="pill ro">Read-only</span></div>
+      <div class="glass page spot reveal"><span class="path">/app/ai</span><h3>AI console</h3><p>PS5LM Plus chat over the gateway, model list, context meter.</p><span class="pill ro">Read-only</span></div>
+      <div class="glass page spot reveal"><span class="path">/app/minecraft</span><h3>Minecraft</h3><p>Server status and a link out to the Worker panel.</p><span class="pill ro">Read-only</span></div>
+      <div class="glass page spot reveal"><span class="path">/app/security</span><h3>Security</h3><p>Audit log, pinned host keys, owner unlock with phone code.</p><span class="pill gate">Owner unlock</span></div>
+    </div>
+
+    <div class="sec-head reveal" style="margin-top:96px">
+      <div class="eyebrow">Build order</div>
+      <h2>Ship it in four steps.</h2>
+    </div>
+    <div class="phases">
+      <div class="glass phase reveal"><span class="n">1</span><h3>Front page</h3><ul><li>Landing + downloads</li><li>All scroll animations</li><li>Static, Cloudflare Pages</li></ul></div>
+      <div class="glass phase reveal"><span class="n">2</span><h3>Read-only app</h3><ul><li>Access sign-in</li><li>Overview, hosts, services</li><li>Live telemetry polling</li></ul></div>
+      <div class="glass phase reveal"><span class="n">3</span><h3>AI console</h3><ul><li>PS5LM chat, streaming</li><li>Model list + status</li><li>Local history only</li></ul></div>
+      <div class="glass phase reveal"><span class="n">4</span><h3>Owner unlock</h3><ul><li>Phone code check</li><li>30-min write window</li><li>Audit log view</li></ul></div>
+    </div>
+    <div class="glass stack reveal">
+      <div><b>Framework</b>Astro (static landing, islands for the app)</div>
+      <div><b>Motion</b>CSS scroll timelines, GSAP ScrollTrigger fallback</div>
+      <div><b>Smooth scroll</b>Lenis</div>
+      <div><b>Hero</b>SVG + canvas, no WebGL needed</div>
+      <div><b>Hosting</b>Cloudflare Pages behind Access</div>
+    </div>
+  </section>
+
+  <!-- MOCKUPS -->
+  <section id="mockups" class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Mockups</div>
+      <h2>Inside the app.</h2>
+      <p class="lede">These frames run the planned motion with example data. Hover a frame to tilt it. Every number and host name below is invented for the mockup.</p>
+    </div>
+
+    <div class="mock">
+      <div class="mock-head reveal"><div><div class="eyebrow">Mockup 2 · /app</div><h3 style="font-size:26px;margin-top:6px">Overview</h3></div><p>Sparklines stream in from the right every second. Bars ease to each new value.</p></div>
+      <div class="glass frame tilt-in" data-tilt>
+        <div class="chrome"><i></i><i></i><i></i><span class="url">nexus.yourdomain/app</span></div>
+        <div class="app">
+          <aside class="side">
+            <a class="on" href="#mockups"><span></span>Overview</a><a href="#mockups"><span></span>Hosts</a><a href="#mockups"><span></span>Services</a><a href="#mockups"><span></span>AI console</a><a href="#mockups"><span></span>Minecraft</a><a href="#mockups"><span></span>Security</a>
+          </aside>
+          <div class="pane">
+            <div class="pane-top"><h3>Good evening</h3><span class="chip"><span class="dot"></span>Debian read-only · locked</span></div>
+            <div class="alert">▲ <span>nixos-lab disk at <b class="mono">91%</b> of 512 GB. Low-resource alert sent to iPhone.</span></div>
+            <div class="hosts" id="hosts"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock">
+      <div class="mock-head reveal"><div><div class="eyebrow">Mockup 3 · /app/ai</div><h3 style="font-size:26px;margin-top:6px">AI console</h3></div><p>Replies stream token by token. Tool calls show as dashed chips so you can see what was read.</p></div>
+      <div class="glass frame tilt-in" data-tilt>
+        <div class="chrome"><i></i><i></i><i></i><span class="url">nexus.yourdomain/app/ai</span></div>
+        <div class="chat">
+          <div class="chat-top"><span class="chip">PS5LM Plus · qwen2.5-14b</span><span class="chip"><span class="dot"></span>via gateway</span>
+            <div class="meter">context <div class="bar"><i id="ctx" style="--v:31%;--c:var(--purple)"></i></div><span id="ctxn">31%</span></div></div>
+          <div class="msgs">
+            <div class="msg me">Why is nixos-lab's disk filling up?</div>
+            <div class="tool">⌁ ran <code>du -xh /nix/store --max-depth=1</code> · read-only catalog</div>
+            <div class="msg ai" id="typed"></div>
+          </div>
+          <div class="composer"><span>Ask about your hosts…</span><div class="modes"><em class="on">Ask</em><em>Plan</em></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock">
+      <div class="mock-head reveal"><div><div class="eyebrow">Mockup 4 · /app/security</div><h3 style="font-size:26px;margin-top:6px">Owner unlock</h3></div><p>The ring drains over the code's 20-second life. Digits lift as they're typed.</p></div>
+      <div class="glass frame tilt-in" data-tilt>
+        <div class="chrome"><i></i><i></i><i></i><span class="url">nexus.yourdomain/app/security</span></div>
+        <div class="unlock">
+          <div class="l">
+            <div class="eyebrow" style="color:var(--warn)">Debian writes are locked</div>
+            <h3 style="font-size:26px">Enter the code from your iPhone</h3>
+            <p style="color:var(--muted);margin:0">Open Nexus on your iPhone and go to Services → One Time Passcode. A correct code unlocks Debian writes for 30 minutes. AI agents stay read-only.</p>
+            <div class="policy">
+              <div><span>Owner SSH terminal</span><span style="color:var(--warn)">needs unlock</span></div>
+              <div><span>systemctl restart</span><span style="color:var(--warn)">needs unlock</span></div>
+              <div><span>Agents · any mode</span><span style="color:var(--err)">never</span></div>
+            </div>
+          </div>
+          <div class="r">
+            <div class="otp" id="otp"><b>4</b><b>8</b><b>2</b><b>7</b></div>
+            <div class="ringbox">
+              <svg width="120" height="120" viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="#28354A" stroke-width="6"/><circle id="ring" cx="60" cy="60" r="52" fill="none" stroke="url(#arc2)" stroke-width="6" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="0"/></svg>
+              <div id="secs">20</div>
+            </div>
+            <span class="mono" style="color:var(--dim)">seconds left on this code</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock">
+      <div class="phone-row">
+        <div class="phone reveal">
+          <div class="scr">
+            <div style="display:flex;justify-content:space-between;align-items:center"><b style="font:600 20px var(--display)">Overview</b><span class="state ok">4 / 4 up</span></div>
+            <div class="glass host" id="phoneHost"></div>
+            <div class="glass host"><div class="host-h"><div><b>minecraft</b><small>paper 1.21 · 3 online</small></div><span class="state ok">up</span></div></div>
+            <div class="tabbar"><span class="on">Home</span><span>Hosts</span><span>AI</span><span>Lock</span></div>
+          </div>
+        </div>
+        <div class="reveal" style="display:grid;gap:14px">
+          <div class="eyebrow">Mockup 5 · phone width</div>
+          <h2>Same app, one thumb.</h2>
+          <p class="lede">Under 560px the sidebar folds into a bottom tab bar, host cards stack, and scroll effects shorten so nothing waits on a long swipe. If you have the iPhone app you'll use that instead. This view is for borrowed phones and tablets.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MOTION SPEC -->
+  <section id="motion" class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Motion spec</div>
+      <h2>Where things move, and why.</h2>
+      <p class="lede">One big moment on load (the orbit), then motion only where it carries information: live data, progress and state changes. Everything turns off under reduced motion.</p>
+    </div>
+    <div class="glass tbl reveal">
+      <table>
+        <thead><tr><th>Moment</th><th>Trigger</th><th>Technique</th><th>Timing</th></tr></thead>
+        <tbody>
+          <tr><td>Orbit N draws itself, nodes start circling</td><td>Page load</td><td>SVG <code>stroke-dashoffset</code> + <code>animateMotion</code></td><td>2.2 s draw, 14 s orbit</td></tr>
+          <tr><td>Headline lines rise from a mask</td><td>Page load</td><td>CSS transform, staggered 120 ms</td><td>1.1 s</td></tr>
+          <tr><td>Starfield parallax</td><td>Scroll + pointer</td><td>Canvas, depth per star</td><td>Every frame</td></tr>
+          <tr><td>Orbit sinks and fades as you leave the hero</td><td>Scroll 0–80vh</td><td><code>animation-timeline: scroll()</code></td><td>Scrubbed</td></tr>
+          <tr><td>Sections rise into place</td><td>Enter viewport</td><td><code>animation-timeline: view()</code></td><td>Scrubbed, entry 0–55%</td></tr>
+          <tr><td>App frames tilt from 22° to flat</td><td>Enter viewport</td><td>3D <code>rotateX</code> on a view timeline</td><td>Scrubbed</td></tr>
+          <tr><td>Data flows along diagram lines</td><td>Always</td><td>Dashed stroke offset loop</td><td>1.2 s loop</td></tr>
+          <tr><td>Glass cards follow the pointer</td><td>Hover</td><td>Radial highlight at <code>--mx/--my</code></td><td>300 ms fade</td></tr>
+          <tr><td>Sparklines and bars update</td><td>New telemetry</td><td>Canvas shift + width transition</td><td>1 s poll, 900 ms ease</td></tr>
+          <tr><td>Scroll progress hairline</td><td>Scroll</td><td><code>scaleX</code> on a fixed bar</td><td>Every frame</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="questions" class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Before building</div>
+      <h2>Four things to decide.</h2>
+    </div>
+    <div class="qs">
+      <div class="glass reveal"><h3>Domain</h3><p>Which hostname should the site live on, and should the landing page be public or behind Access too?</p></div>
+      <div class="glass reveal"><h3>Gateway routes</h3><p>Does the gateway already expose telemetry over HTTP, or does phase 2 need new read-only routes on it?</p></div>
+      <div class="glass reveal"><h3>Owner unlock on the web</h3><p>Allow it from a browser at all, or keep Debian writes to Desktop and the phone only?</p></div>
+      <div class="glass reveal"><h3>Framework</h3><p>Astro is the suggestion. Say if you'd rather use SvelteKit, Next.js or plain HTML.</p></div>
+    </div>
+  </section>
+</main>
+
+<footer><div class="wrap">Nexus Online · concept v0.1 · 11 Nov 2026 · example data throughout</div></footer>
+
+<script>
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// scroll progress
+const prog = document.getElementById('progress');
+addEventListener('scroll', () => {
+  const h = document.documentElement.scrollHeight - innerHeight;
+  prog.style.transform = `scaleX(${h > 0 ? scrollY / h : 0})`;
+}, {passive:true});
+
+// starfield with scroll + pointer parallax
+(() => {
+  const c = document.getElementById('stars'), x = c.getContext('2d');
+  let w, h, d, stars = [], px = 0, py = 0;
+  const size = () => {
+    d = devicePixelRatio || 1;
+    w = c.width = innerWidth * d; h = c.height = innerHeight * d;
+    stars = Array.from({length: Math.round(innerWidth * innerHeight / 5000)}, () => ({
+      x: Math.random() * w, y: Math.random() * h, z: Math.random() * 0.9 + 0.1, t: Math.random() * 6.28
+    }));
+  };
+  size(); addEventListener('resize', size);
+  addEventListener('pointermove', e => { px = e.clientX / innerWidth - .5; py = e.clientY / innerHeight - .5; });
+  const draw = t => {
+    x.clearRect(0, 0, w, h);
+    for (const s of stars) {
+      const sx = ((s.x - px * 40 * d * s.z) % w + w) % w;
+      const sy = ((s.y - scrollY * s.z * 0.35 * d - py * 40 * d * s.z) % h + h) % h;
+      x.globalAlpha = (0.35 + 0.65 * Math.abs(Math.sin(t / 1400 + s.t))) * s.z;
+      x.fillStyle = s.z > .75 ? '#C9ADFF' : '#9CBCFF';
+      x.fillRect(sx, sy, s.z * 2 * d, s.z * 2 * d);
+    }
+    if (!reduce) requestAnimationFrame(draw);
+  };
+  requestAnimationFrame(draw);
+})();
+
+// pointer spotlight + tilt
+document.querySelectorAll('.glass').forEach(el => el.addEventListener('pointermove', e => {
+  const r = el.getBoundingClientRect();
+  el.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+  el.style.setProperty('--my', (e.clientY - r.top) + 'px');
+}));
+if (!reduce) document.querySelectorAll('[data-tilt]').forEach(el => {
+  el.classList.add('spot');
+  el.addEventListener('pointermove', e => {
+    const r = el.getBoundingClientRect();
+    const rx = ((e.clientY - r.top) / r.height - .5) * -5, ry = ((e.clientX - r.left) / r.width - .5) * 7;
+    el.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`;
+  });
+  el.addEventListener('pointerleave', () => el.style.transform = '');
+});
+
+// example telemetry (invented values for the mockup)
+const HOSTS = [
+  {id:'debian-gw', sub:'gateway · 10.0.0.2', cpu:18, mem:46, disk:38, color:'#9CBCFF'},
+  {id:'nixos-lab', sub:'NixOS 25.05 · 10.0.0.7', cpu:42, mem:61, disk:91, color:'#F1C07E', warn:true},
+  {id:'ps5lm', sub:'PS5LM Plus · 2 models', cpu:73, mem:82, disk:54, color:'#C9ADFF'},
+  {id:'minecraft', sub:'paper 1.21 · 3 online', cpu:27, mem:58, disk:22, color:'#7CE8CA'},
+];
+const hostHTML = h => `
+  <div class="host-h"><div><b>${h.id}</b><small>${h.sub}</small></div><span class="state ${h.warn?'warn':'ok'}">${h.warn?'disk 91%':'healthy'}</span></div>
+  <canvas class="spark" data-id="${h.id}" aria-label="${h.id} CPU over the last 40 seconds"></canvas>
+  <div class="metrics">${['cpu','mem','disk'].map(k => `<div class="metric"><small>${k}</small><b data-k="${k}">${h[k]}%</b><div class="bar"><i data-b="${k}" style="--v:${h[k]}%;--c:${k==='disk'&&h.warn?'var(--warn)':h.color}"></i></div></div>`).join('')}</div>`;
+const hostsEl = document.getElementById('hosts');
+HOSTS.forEach(h => {
+  h.hist = Array.from({length:40}, () => Math.max(3, Math.min(97, h.cpu + (Math.random()-.5)*14)));
+  const el = document.createElement('div'); el.className = 'glass host spot'; el.dataset.host = h.id; el.innerHTML = hostHTML(h); hostsEl.append(el);
+});
+const ph = document.getElementById('phoneHost'); ph.dataset.host = 'ps5lm'; ph.innerHTML = hostHTML(HOSTS[2]);
+
+function drawSpark(cv, h, shift) {
+  const d = devicePixelRatio || 1, W = Math.round(cv.clientWidth * d), H = Math.round(cv.clientHeight * d);
+  if (!W) return;
+  if (cv.width !== W) cv.width = W; if (cv.height !== H) cv.height = H;
+  const g = cv.getContext('2d'); g.clearRect(0, 0, W, H);
+  const n = h.hist.length, step = W / (n - 2);
+  const pts = h.hist.map((v, i) => [(i - shift) * step, H - 4*d - (v / 100) * (H - 8*d)]);
+  g.strokeStyle = 'rgba(166,175,194,.12)'; g.lineWidth = d;
+  for (const f of [.25,.5,.75]) { g.beginPath(); g.moveTo(0, H*f); g.lineTo(W, H*f); g.stroke(); }
+  const grad = g.createLinearGradient(0,0,0,H); grad.addColorStop(0, h.color + '55'); grad.addColorStop(1, h.color + '00');
+  const path = () => { g.beginPath(); pts.forEach(([x,y],i) => i ? g.lineTo(x,y) : g.moveTo(x,y)); };
+  path(); g.lineTo(pts[n-1][0], H); g.lineTo(pts[0][0], H); g.closePath(); g.fillStyle = grad; g.fill();
+  path(); g.strokeStyle = h.color; g.lineWidth = 1.8*d; g.lineJoin = 'round'; g.stroke();
+  const [ex, ey] = pts[n-1]; g.fillStyle = h.color; g.beginPath(); g.arc(Math.min(ex, W - 4*d), ey, 3.2*d, 0, 7); g.fill();
+}
+const clamp = v => Math.max(3, Math.min(97, v));
+let last = performance.now();
+function tick() {
+  HOSTS.forEach(h => {
+    h.cpu = Math.round(clamp(h.cpu + (Math.random()-.5)*12)); h.mem = Math.round(clamp(h.mem + (Math.random()-.5)*3));
+    h.hist.push(h.cpu); h.hist.shift();
+    document.querySelectorAll(`[data-host="${h.id}"]`).forEach(card => ['cpu','mem'].forEach(k => {
+      card.querySelector(`[data-k="${k}"]`).textContent = h[k] + '%';
+      card.querySelector(`[data-b="${k}"]`).style.setProperty('--v', h[k] + '%');
+    }));
+  });
+  last = performance.now();
+}
+function frame(now) {
+  const shift = reduce ? 1 : Math.min(1, (now - last) / 1000);
+  document.querySelectorAll('.spark').forEach(cv => drawSpark(cv, HOSTS.find(h => h.id === cv.dataset.id), shift));
+  if (!reduce) requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+if (!reduce) setInterval(tick, 1000);
+
+// streamed AI reply; shown complete at rest, restreams when scrolled into view
+const reply = `Most of it is old system generations. /nix/store is 312 GB and 41 generations are still referenced.\n\nTo free about 180 GB, run this on nixos-lab:\n  sudo nix-collect-garbage --delete-older-than 14d\n\nI can't run it from here because Nexus Online is read-only. Copy it into an owner terminal.`;
+const typed = document.getElementById('typed'), ctx = document.getElementById('ctx'), ctxn = document.getElementById('ctxn');
+typed.textContent = reply;
+function stream() {
+  let i = 0;
+  const caret = document.createElement('span'); caret.className = 'caret';
+  const step = () => {
+    i = Math.min(reply.length, i + 1 + Math.floor(Math.random()*3));
+    typed.textContent = reply.slice(0, i); typed.append(caret);
+    const pct = Math.round(22 + 9 * i / reply.length); ctx.style.setProperty('--v', pct + '%'); ctxn.textContent = pct + '%';
+    if (i < reply.length) setTimeout(step, 22 + Math.random()*40); else setTimeout(stream, 6000);
+  };
+  step();
+}
+if (!reduce) new IntersectionObserver((es, o) => { if (es[0].isIntersecting) { stream(); o.disconnect(); } }, {threshold:.5}).observe(typed);
+
+// OTP ring + typed digits
+const ring = document.getElementById('ring'), secs = document.getElementById('secs'), otp = [...document.querySelectorAll('#otp b')];
+const code = '4827', t0 = performance.now();
+function otpLoop(now) {
+  const e = ((now - t0) / 1000) % 20;
+  ring.style.strokeDashoffset = (326.7 * e / 20).toFixed(1);
+  secs.textContent = Math.ceil(20 - e);
+  const n = Math.min(4, Math.floor(e / 1.2) + 1);
+  otp.forEach((b, i) => { b.textContent = i < n ? code[i] : '·'; b.classList.toggle('f', i === n - 1 && e < 6); });
+  requestAnimationFrame(otpLoop);
+}
+if (!reduce) requestAnimationFrame(otpLoop);
+</script>
