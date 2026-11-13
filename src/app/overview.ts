@@ -1,4 +1,6 @@
 import { api, h, fmt, pill, viewHeader, sparkline, type Cleanup } from './lib';
+import { hostState, hostStats, TITLE, type Target, type HostStats } from './hosts';
+import { statsBlock } from './devices';
 
 function stat(label: string, wide = false) {
   const value = h('b', { class: 'stat-v' }, '—');
@@ -16,7 +18,7 @@ function bar(fraction: number, tone = 'var(--accent)') {
 
 export function mount(root: HTMLElement): Cleanup {
   const live = h('span', { class: 'chip' }, h('span', { class: 'dot' }), 'Updating');
-  root.append(viewHeader('Overview', 'Live status from the Nexus gateway. Refreshes every 5 seconds while this tab is open.', live));
+  root.append(viewHeader('Overview', 'Live status from the gateway, NexusAI and your hosts. Refreshes every 5 seconds while this tab is open.', live));
 
   const inference = stat('NexusAI inference', true);
   const canvas = h('canvas', { class: 'spark', 'aria-label': 'Generation speed over the last few minutes' });
@@ -26,14 +28,25 @@ export function mount(root: HTMLElement): Cleanup {
   const models = stat('Models on the PS5');
   const runs = stat('Agent runs active');
   const convs = stat('Synced conversations');
-  const note = h('section', { class: 'card note' },
-    h('span', { class: 'stat-l' }, 'Host metrics'),
-    h('p', {}, 'CPU, memory and disk for Debian and NixOS come over SSH, which the browser never opens. Use Nexus Desktop or the iPhone app for those.'));
+  let stopped = false;
+  const hostCards = (['debian', 'nixos'] as Target[]).map(t => {
+    const el = h('section', { class: 'card stat host' });
+    const draw = (s?: HostStats | string) => {
+      const st = hostState(t);
+      el.replaceChildren(h('span', { class: 'stat-l' }, `${TITLE[t]} host`),
+        typeof s === 'object' ? statsBlock(s) : h('div', { class: 'row' },
+          h('small', { class: 'muted' }, typeof s === 'string' ? s : st.status === 'connecting' ? 'Connecting…' : 'CPU, memory and disk come over the SSH tunnel.'),
+          st.status === 'connecting' ? null : h('button', { type: 'button', class: 'btn small', onclick: () => poll() }, 'Connect')));
+    };
+    const poll = () => hostStats(t).then(s => { if (!stopped) draw(s); }, e => { if (!stopped) draw((e as Error).message); });
+    draw();
+    return { el, refresh: () => { if (hostState(t).status === 'on') poll(); } };
+  });
 
-  root.append(h('div', { class: 'cards stagger' }, inference.el, context.el, memory.el, models.el, runs.el, convs.el, note));
+  root.append(h('div', { class: 'cards stagger' }, inference.el, context.el, memory.el, models.el, runs.el, convs.el, ...hostCards.map(c => c.el)));
 
   const speeds: number[] = [];
-  let timer = 0, stopped = false;
+  let timer = 0;
 
   async function refresh() {
     const [status, list, active, history] = await Promise.allSettled([
@@ -83,7 +96,7 @@ export function mount(root: HTMLElement): Cleanup {
   }
 
   const loop = async () => {
-    if (!document.hidden) await refresh().catch(() => {});
+    if (!document.hidden) { hostCards.forEach(c => c.refresh()); await refresh().catch(() => {}); }
     if (!stopped) timer = window.setTimeout(loop, 5000);
   };
   loop();
