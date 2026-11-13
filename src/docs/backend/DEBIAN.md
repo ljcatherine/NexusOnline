@@ -6,7 +6,7 @@ This guide sets up the server that sits behind Cloudflare: the Nexus gateway, th
 path in is the outbound tunnel.
 
 Commands assume Debian 13, a non-root admin account with `sudo`, and a checkout of
-[NexusiOS](https://github.com/ljcatherine/NexusiOS) on a trusted build machine.
+[NexusBackend](https://github.com/ljcatherine/NexusBackend) on a trusted build machine.
 Replace `server` with your account name.
 
 > [!IMPORTANT]
@@ -80,7 +80,7 @@ sudo install -m 0644 nexus-gateway.service /etc/systemd/system/
 ```
 
 Create `/etc/nexus-gateway/nexus.env` from
-[`gateway/.env.example`](https://github.com/ljcatherine/NexusiOS/blob/main/gateway/.env.example)
+[`gateway/.env.example`](https://github.com/ljcatherine/NexusBackend/blob/main/gateway/.env.example)
 (mode `0640`, `root:nexus-gateway`). The gateway refuses to start until the
 required values are set:
 
@@ -103,7 +103,7 @@ Optional features stay off until configured:
 |---|---|
 | Web search | `NEXUS_SEARCH_PROVIDER=brave` + `NEXUS_BRAVE_API_KEY`, or `searxng` + `NEXUS_SEARXNG_URL`; grant `ai.search` |
 | Conversation sync | `NEXUS_CONVERSATION_ENCRYPTION_KEY` (base64 of 32 random bytes; back it up), `NEXUS_CONVERSATIONS_DIR`; grant `ai.history` |
-| Minecraft panel | `NEXUS_MINECRAFT_PANEL_ORIGIN`, `NEXUS_MINECRAFT_PUBLIC_ORIGIN`; grant `minecraft.panel` |
+| Minecraft panel | `NEXUS_MINECRAFT_PANEL_ORIGIN`, and `NEXUS_MINECRAFT_PUBLIC_ORIGIN` set to the panel's own Access-protected hostname (see [Cloudflare](/docs/backend/cloudflare/)); grant `minecraft.panel` |
 
 Generate the sync key straight into the file so it's never printed:
 
@@ -149,7 +149,7 @@ The apps pin the relay host key on first use, separately from TLS.
 ## 6. Agent orchestrator
 
 ```bash
-git clone https://github.com/ljcatherine/NexusiOS.git ~/nexus
+git clone https://github.com/ljcatherine/NexusBackend.git ~/nexus
 mkdir -p ~/.config/nexus-orchestrator ~/.local/share/nexus-orchestrator/runs
 chmod 700 ~/.config/nexus-orchestrator ~/.local/share/nexus-orchestrator
 ```
@@ -201,7 +201,7 @@ cd ~/nexus/workspace-agent && go test ./... && go build -o ~/.local/bin/nexus-wo
 ```
 
 Environment, from
-[`workspace-agent/.env.example`](https://github.com/ljcatherine/NexusiOS/blob/main/workspace-agent/.env.example) (0600):
+[`workspace-agent/.env.example`](https://github.com/ljcatherine/NexusBackend/blob/main/workspace-agent/.env.example) (0600):
 
 ```bash
 NEXUS_WORKSPACE_HOST=debian          # nixos on the workstation

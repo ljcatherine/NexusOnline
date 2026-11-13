@@ -13,6 +13,8 @@ New here? Start with **[Setting up the whole ecosystem](/docs/setup/)**.
 
 ## Backend
 
+Source: [ljcatherine/NexusBackend](https://github.com/ljcatherine/NexusBackend) (gateway, Workers, orchestrator, workspace agent).
+
 | Guide | What it covers |
 |---|---|
 | [Debian server](/docs/backend/debian/) | Hardening, gateway, tunnel, orchestrator, workspace agent, `nexus-ro` |

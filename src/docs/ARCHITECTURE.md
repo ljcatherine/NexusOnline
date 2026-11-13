@@ -12,11 +12,12 @@ through Cloudflare without opening inbound ports.
 | Nexus Desktop | NixOS / Linux | [NexusNix](https://github.com/ljcatherine/NexusNix) | IDE, agents, infrastructure |
 | Nexus Desktop | Windows 10/11 | [NexusWindows](https://github.com/ljcatherine/NexusWindows) | IDE, agents, infrastructure |
 | Nexus Online | Cloudflare Worker | [NexusOnline](https://github.com/ljcatherine/NexusOnline) | Landing page and read-only web client |
-| `nexus-gateway` Worker | Cloudflare | [NexusiOS `cloudflare/`](https://github.com/ljcatherine/NexusiOS/tree/main/cloudflare) | Fixed-route front door for the apps |
-| Nexus gateway | Debian, `127.0.0.1:8787` | [NexusiOS `gateway/`](https://github.com/ljcatherine/NexusiOS/tree/main/gateway) | Identity, permissions, AI, SSH relay, search, sync |
+| `nexus-gateway` Worker | Cloudflare | [NexusBackend `cloudflare/`](https://github.com/ljcatherine/NexusBackend/tree/main/cloudflare) | Fixed-route front door for the apps |
+| Nexus gateway | Debian, `127.0.0.1:8787` | [NexusBackend `gateway/`](https://github.com/ljcatherine/NexusBackend/tree/main/gateway) | Identity, permissions, AI, SSH relay, search, sync |
 | `cloudflared` | Debian | Cloudflare | Outbound-only tunnel to Workers VPC |
-| Agent orchestrator | Debian, `127.0.0.1:8897` | [NexusiOS `agent-orchestrator/`](https://github.com/ljcatherine/NexusiOS/tree/main/agent-orchestrator) | Durable agent runs, approvals, context |
-| Workspace agent | Debian and NixOS, `127.0.0.1:8896` | [NexusiOS `workspace-agent/`](https://github.com/ljcatherine/NexusiOS/tree/main/workspace-agent) | Read-only workspace bridge |
+| Minecraft panel | Debian, `127.0.0.1:8080` | Separate panel app | Served only at its own Access-protected hostname through the `nexus-gateway` Worker |
+| Agent orchestrator | Debian, `127.0.0.1:8897` | [NexusBackend `agent-orchestrator/`](https://github.com/ljcatherine/NexusBackend/tree/main/agent-orchestrator) | Durable agent runs, approvals, context |
+| Workspace agent | Debian and NixOS, `127.0.0.1:8896` | [NexusBackend `workspace-agent/`](https://github.com/ljcatherine/NexusBackend/tree/main/workspace-agent) | Read-only workspace bridge |
 | `nexus-ro` | Debian | [NexusNix `crates/nexus-ro`](https://github.com/ljcatherine/NexusNix/tree/main/crates/nexus-ro) | SSH forced command, read-only catalog |
 | NexusAI | PS5, `:8081` and `:8082` | [ljcatherine/NexusAI](https://github.com/ljcatherine/NexusAI) | Local LLM inference and model control |
 
