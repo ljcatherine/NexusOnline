@@ -10,6 +10,7 @@ New here? Start with **[Setting up the whole ecosystem](/docs/setup/)**.
 | [Nexus Desktop for Linux](/docs/apps/linux/) | [NexusNix](https://github.com/ljcatherine/NexusNix) |
 | [Nexus Desktop for Windows](/docs/apps/windows/) | [NexusWindows](https://github.com/ljcatherine/NexusWindows) |
 | [Nexus Online](/docs/apps/online/) | [NexusOnline](https://github.com/ljcatherine/NexusOnline) |
+| [Nexus Minecraft](/docs/apps/minecraft/) | [NexusMinecraft](https://github.com/ljcatherine/NexusMinecraft) |
 
 ## Backend
 

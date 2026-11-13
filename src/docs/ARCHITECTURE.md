@@ -15,7 +15,7 @@ through Cloudflare without opening inbound ports.
 | `nexus-gateway` Worker | Cloudflare | [NexusBackend `cloudflare/`](https://github.com/ljcatherine/NexusBackend/tree/main/cloudflare) | Fixed-route front door for the apps |
 | Nexus gateway | Debian, `127.0.0.1:8787` | [NexusBackend `gateway/`](https://github.com/ljcatherine/NexusBackend/tree/main/gateway) | Identity, permissions, AI, SSH relay, search, sync |
 | `cloudflared` | Debian | Cloudflare | Outbound-only tunnel to Workers VPC |
-| Minecraft panel | Debian, `127.0.0.1:8080` | Separate panel app | Served only at its own Access-protected hostname through the `nexus-gateway` Worker |
+| Nexus Minecraft | Debian, `127.0.0.1:8080` | [NexusMinecraft](https://github.com/ljcatherine/NexusMinecraft) | Minecraft server panel, served only at its own Access-protected hostname through the `nexus-gateway` Worker |
 | Agent orchestrator | Debian, `127.0.0.1:8897` | [NexusBackend `agent-orchestrator/`](https://github.com/ljcatherine/NexusBackend/tree/main/agent-orchestrator) | Durable agent runs, approvals, context |
 | Workspace agent | Debian and NixOS, `127.0.0.1:8896` | [NexusBackend `workspace-agent/`](https://github.com/ljcatherine/NexusBackend/tree/main/workspace-agent) | Read-only workspace bridge |
 | `nexus-ro` | Debian | [NexusNix `crates/nexus-ro`](https://github.com/ljcatherine/NexusNix/tree/main/crates/nexus-ro) | SSH forced command, read-only catalog |
@@ -78,7 +78,7 @@ Desktop ──SSH, forced command──► nexus-ro (read-only catalog)
 | 8787 | 127.0.0.1 | Nexus gateway |
 | 8896 | 127.0.0.1 | Workspace agent |
 | 8897 | 127.0.0.1 | Agent orchestrator |
-| 8080 | 127.0.0.1 | Minecraft panel (optional) |
+| 8080 | 127.0.0.1 | Nexus Minecraft panel (optional) |
 | 8081 | PS5 LAN | NexusAI llama-server |
 | 8082 | PS5 LAN, opt-in | NexusAI model-control API |
 | 7844/udp | outbound | `cloudflared` QUIC to Cloudflare |
