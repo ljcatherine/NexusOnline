@@ -36,14 +36,17 @@ export function mount(root: HTMLElement): Cleanup {
     if (list.status === 'rejected') { body.append(errorBox(list.reason)); return; }
     const models: any[] = Array.isArray(list.value?.models) ? list.value.models : [];
     if (!models.length) { body.append(h('p', { class: 'muted' }, 'No models found on the PS5.')); return; }
+    // The gateway can report current:false for the running model, so also match the status's model_id.
+    const running = status.status === 'fulfilled' ? status.value.model_id : undefined;
     body.append(h('div', { class: 'model-grid stagger' }, ...models.map(m => {
       const id = String(m.id);
-      return h('section', { class: `card model${m.current ? ' current' : ''}` },
-        h('header', {}, tile(m.current ? '●' : '◇', m.current ? 'green' : 'blue'), h('b', {}, String(m.label ?? id))),
+      const cur = !!m.current || (!!running && id === running);
+      return h('section', { class: `card model${cur ? ' current' : ''}` },
+        h('header', {}, tile(cur ? '●' : '◇', cur ? 'green' : 'blue'), h('b', {}, String(m.label ?? id))),
         h('small', { class: 'muted mono' }, `${String(m.architecture ?? '—')} · ${fmt.bytes(m.fileSizeBytes ?? m.file_size_bytes)} · ${String(m.drive ?? '—')}`),
         h('div', { class: 'row' },
-          m.current ? pill('Loaded', 'ok') : m.fits ? pill('Fits', 'info') : pill('Too large', 'warn'),
-          !m.current && MODEL_ID.test(id) ? h('button', {
+          cur ? pill('Loaded', 'ok') : m.fits ? pill('Fits', 'info') : pill('Too large', 'warn'),
+          !cur && MODEL_ID.test(id) ? h('button', {
             type: 'button', class: 'btn small primary', disabled: !!busy || loading || m.fits === false,
             onclick: () => confirm(`Load ${m.label ?? id}? This replaces the running model.`) && action(`/v1/nexus/models/${id}/load`, id),
           }, busy === id ? 'Loading…' : 'Load') : null));

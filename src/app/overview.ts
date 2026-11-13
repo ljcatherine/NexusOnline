@@ -77,7 +77,9 @@ export function mount(root: HTMLElement): Cleanup {
 
     if (list.status === 'fulfilled') {
       const all = Array.isArray(list.value?.models) ? list.value.models : [];
-      const current = all.find((m: any) => m.current);
+      // The gateway can report current:false for the running model, so also match the status's model_id.
+      const running = status.status === 'fulfilled' ? status.value.model_id : undefined;
+      const current = all.find((m: any) => m.current || (running && m.id === running));
       models.set(String(all.length), current ? `Loaded: ${current.label}` : 'None loaded');
     } else models.set('—', list.reason?.message ?? '');
 

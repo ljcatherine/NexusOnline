@@ -48,7 +48,8 @@ export async function raw(path: string, init: RequestInit = {}): Promise<Respons
   }
   if (res.type === 'opaqueredirect' || !res.ok) {
     let message = '';
-    try { message = String((await res.json())?.error ?? ''); } catch { /* not JSON */ }
+    // The Worker sends { error: "…" }; the gateway sends { error: { message: "…" } }.
+    try { const err = (await res.json())?.error; message = String((typeof err === 'object' ? err?.message : err) ?? ''); } catch { /* not JSON */ }
     throw new ApiError(res.type === 'opaqueredirect' ? 0 : res.status, explain(res.status, message));
   }
   return res;
