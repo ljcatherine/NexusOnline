@@ -152,7 +152,8 @@ main{max-width:460px;display:grid;gap:14px}h1{font-size:28px;margin:0}p{margin:0
 .btn{display:inline-block;padding:11px 18px;border-radius:12px;background:linear-gradient(135deg,#9CBCFF,#C9ADFF);color:#070C18;font-weight:600;text-decoration:none}
 </style></head><body><main><h1>Sign in to use Nexus Online</h1>
 <p>Nexus Online is only for the owner. Your sign-in is missing, has expired, or belongs to a different account.</p>
-<p><a class="btn" href="/cdn-cgi/access/logout">Sign out and try again</a></p>
+<p><a class="btn" href="/login/">Go to the sign-in page</a></p>
+<p><a href="/cdn-cgi/access/logout">Sign out of the current account</a></p>
 <p><a href="/">Back to the Nexus home page</a></p></main></body></html>`;
 
 export default {
