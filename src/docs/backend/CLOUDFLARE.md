@@ -58,7 +58,7 @@ Copy the **Application Audience (AUD) tag**.
 
 ## 4. Register the public OAuth client
 
-From a NexusiOS checkout:
+From a [NexusBackend](https://github.com/ljcatherine/NexusBackend) checkout:
 
 ```bash
 python3 scripts/register-cloudflare-access-client.py \
@@ -71,7 +71,7 @@ no client secret, and none goes in any app.
 
 ## 5. `nexus-gateway` Worker
 
-From [NexusiOS `cloudflare/`](https://github.com/ljcatherine/NexusiOS/tree/main/cloudflare):
+From [NexusBackend `cloudflare/`](https://github.com/ljcatherine/NexusBackend/tree/main/cloudflare):
 
 ```bash
 cd cloudflare
@@ -98,8 +98,14 @@ Then in **Workers & Pages → nexus-gateway → Settings → Variables and Secre
 
 The Worker answers `403` until both are set. It accepts only fixed AI routes, the
 `/v1/ssh/{alias}` WebSocket for the aliases you configured, `/oauth2redirect`, and
-the Minecraft panel root. It forwards only Cloudflare's signed
+the Minecraft panel. It forwards only Cloudflare's signed
 `Cf-Access-Jwt-Assertion`.
+
+To give the panel its own address (recommended), add a custom domain such as
+`minecraft.example.com` to the `nexus-gateway` Worker and set `PANEL_HOSTNAME` to it.
+That hostname then serves only the panel, the other hostnames stop serving it, and
+Cloudflare's `CF_*` cookies are stripped before the panel sees a request. Set the
+gateway's `NEXUS_MINECRAFT_PUBLIC_ORIGIN` to `https://` plus that hostname.
 
 ### Gateway settings that must match
 

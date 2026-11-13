@@ -61,8 +61,8 @@ hostname, `ACCESS_TEAM_DOMAIN`, `ACCESS_AUDIENCE`, `OWNER_EMAIL` and the VPC
 
 | File | Template | Guide |
 |---|---|---|
-| Gateway `nexus.env` | [`gateway/.env.example`](https://github.com/ljcatherine/NexusiOS/blob/main/gateway/.env.example) | [Debian](/docs/backend/debian/#4-gateway) |
-| Workspace agent env | [`workspace-agent/.env.example`](https://github.com/ljcatherine/NexusiOS/blob/main/workspace-agent/.env.example) | [Debian](/docs/backend/debian/#7-workspace-agents) |
-| `cloudflare/wrangler.jsonc` | [`wrangler.example.jsonc`](https://github.com/ljcatherine/NexusiOS/blob/main/cloudflare/wrangler.example.jsonc) | [Cloudflare](/docs/backend/cloudflare/#5-nexus-gateway-worker) |
+| Gateway `nexus.env` | [`gateway/.env.example`](https://github.com/ljcatherine/NexusBackend/blob/main/gateway/.env.example) | [Debian](/docs/backend/debian/#4-gateway) |
+| Workspace agent env | [`workspace-agent/.env.example`](https://github.com/ljcatherine/NexusBackend/blob/main/workspace-agent/.env.example) | [Debian](/docs/backend/debian/#7-workspace-agents) |
+| `cloudflare/wrangler.jsonc` | [`wrangler.example.jsonc`](https://github.com/ljcatherine/NexusBackend/blob/main/cloudflare/wrangler.example.jsonc) | [Cloudflare](/docs/backend/cloudflare/#5-nexus-gateway-worker) |
 
 Keep every real config file out of Git and owner-only (`chmod 600`).

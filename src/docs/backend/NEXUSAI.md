@@ -4,7 +4,7 @@
 
 **Local LLM inference on a PS5, with an authenticated model-control API, an agent orchestrator and an optional Hermes engine.**
 
-Source: [ljcatherine/NexusAI](https://github.com/ljcatherine/NexusAI) (release 1.0.0) · [`agent-orchestrator`](https://github.com/ljcatherine/NexusiOS/tree/main/agent-orchestrator) · [`integrations/hermes`](https://github.com/ljcatherine/NexusiOS/tree/main/integrations/hermes)
+Source: [ljcatherine/NexusAI](https://github.com/ljcatherine/NexusAI) (release 1.0.0) · [`agent-orchestrator`](https://github.com/ljcatherine/NexusBackend/tree/main/agent-orchestrator) · [`integrations/hermes`](https://github.com/ljcatherine/NexusBackend/tree/main/integrations/hermes)
 
 </div>
 
@@ -115,7 +115,7 @@ Setup is in [Debian → orchestrator](/docs/backend/debian/#6-agent-orchestrator
 
 An alternative agent engine the orchestrator can use, built as an isolated
 container worker with a pinned base image. Build and verification steps are in
-[`integrations/hermes`](https://github.com/ljcatherine/NexusiOS/tree/main/integrations/hermes).
+[`integrations/hermes`](https://github.com/ljcatherine/NexusBackend/tree/main/integrations/hermes).
 
 ## Using it from the apps
 

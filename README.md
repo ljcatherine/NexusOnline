@@ -66,6 +66,7 @@ behind Cloudflare Access.
 | App | Platform | Repository |
 |---|---|---|
 | NexusiOS | iPhone · Swift | [ljcatherine/NexusiOS](https://github.com/ljcatherine/NexusiOS) |
+| NexusBackend | Gateway · Go, Workers, Python | [ljcatherine/NexusBackend](https://github.com/ljcatherine/NexusBackend) |
 | NexusNix | NixOS · Rust | [ljcatherine/NexusNix](https://github.com/ljcatherine/NexusNix) |
 | NexusWindows | Windows · Rust | [ljcatherine/NexusWindows](https://github.com/ljcatherine/NexusWindows) |
 | NexusAI | PS5 · C++ · 1.0.0 | [ljcatherine/NexusAI](https://github.com/ljcatherine/NexusAI) |
