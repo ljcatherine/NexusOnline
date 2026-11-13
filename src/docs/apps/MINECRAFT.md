@@ -22,7 +22,7 @@ can't measure reads "Unavailable" instead of a made-up number.
 | **Players** | Online players, whitelist, ops and bans, each action confirmed |
 | **Files** | Browse and edit server files with revision checks and path confinement |
 | **Backups** | The existing nightly maintenance sets, inspection and logs |
-| **Extensions** | Installed plugins or Forge mods, and trusted JAR uploads |
+| **Extensions** | Search and install plugins and mods from Modrinth, Hangar and SpigotMC, filtered to the server's software and Minecraft version, with checksum verification; plus installed JARs and uploads |
 | **Diagnostics** | Read-only checks of units, paths, permissions and RCON |
 | **Accounts** | Admin and viewer accounts, single-use invitations and an audit log |
 
@@ -59,4 +59,5 @@ in the repo walks through each setting and how to check it.
 - Never forward the panel, RCON or Minecraft ports to the internet.
 - State-changing requests need a matching origin and CSRF token; file operations stay inside each server's root.
 - Privileged actions go through a root helper that hard-codes the allowed units.
+- The plugin browser only contacts Modrinth, Hangar and Spiget over HTTPS. The server picks the download itself and verifies its checksum and plugin descriptor before installing; SpigotMC files have no checksum and need an extra confirmation.
 - The repo's [security folder](https://github.com/ljcatherine/NexusMinecraft/tree/main/security) has the threat model, audits and test results.
