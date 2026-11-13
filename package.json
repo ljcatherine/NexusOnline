@@ -11,6 +11,8 @@
     "docs": "node scripts/sync-docs.mjs"
   },
   "dependencies": {
+    "@xterm/addon-fit": "0.10.0",
+    "@xterm/xterm": "5.5.0",
     "astro": "7.4.2"
   },
   "devDependencies": {

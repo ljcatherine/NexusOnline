@@ -1,8 +1,9 @@
 // Nexus Online Worker.
 //   /, /_astro/*             public landing page
 //   /app/*                   web app, owner only (Cloudflare Access + token check here)
-//   /api/v1/*                gateway proxy, owner only, Desktop's read + inference allowlist
-import { classify, workspaceQuery } from './routes.js';
+//   /api/v1/*                gateway proxy, owner only, the iPhone app's route allowlist
+//   /api/v1/ssh/{host}       WebSocket SSH tunnel to the gateway relay (bytes only; SSH runs in the browser)
+import { classify, workspaceQuery, SSH_TARGET } from './routes.js';
 import { verifyAccess } from './access.js';
 
 const CSP = [
@@ -76,9 +77,12 @@ async function proxy(request, env, url, assertion) {
   if (accept) headers.set('accept', accept);
   let body = null;
 
-  if (request.method === 'POST') {
-    // CSRF: only this site's own pages may post, and only JSON (forces a CORS preflight cross-site).
-    if (request.headers.get('origin') !== url.origin) return json(403, { error: 'Cross-site request blocked.' });
+  // CSRF: only this site's own pages may post.
+  if (request.method === 'POST' && request.headers.get('origin') !== url.origin) return json(403, { error: 'Cross-site request blocked.' });
+  if (request.method === 'POST' && route.noBody) {
+    if (await readBounded(request.body, 0) === null) return json(413, { error: 'This action takes no body.' });
+  } else if (request.method === 'POST') {
+    // Only JSON, which forces a CORS preflight cross-site.
     const type = request.headers.get('content-type')?.split(';')[0].trim().toLowerCase();
     if (type !== 'application/json') return json(415, { error: 'Send JSON.' });
     const length = request.headers.get('content-length');
@@ -103,6 +107,42 @@ async function proxy(request, env, url, assertion) {
   } catch {
     return json(502, { error: 'The gateway is unreachable.' });
   }
+}
+
+/** Optional RELAY_DEVICES var: [{"name","username","target"}], like the iPhone app's NexusRelayDevices. */
+function relayDevices(env) {
+  try {
+    const list = typeof env.RELAY_DEVICES === 'string' ? JSON.parse(env.RELAY_DEVICES) : env.RELAY_DEVICES;
+    return (Array.isArray(list) ? list : []).filter(d => /^(debian|nixos)$/.test(d?.target) && /^[a-z_][a-z0-9_-]{0,31}$/.test(d?.username))
+      .slice(0, 8).map(d => ({ name: String(d.name ?? d.target).slice(0, 40), username: d.username, target: d.target }));
+  } catch { return []; }
+}
+
+const SSH_PROTOCOL = 'nexus-ssh-v1';
+
+// Same handshake as the gateway Worker in NexusiOS (cloudflare/worker.mjs). The SSH
+// session itself is end-to-end between the browser and the gateway's relay server.
+async function sshTunnel(request, env, url, assertion, target) {
+  if (request.method !== 'GET' || url.search || request.headers.get('upgrade')?.toLowerCase() !== 'websocket') return json(426, { error: 'WebSocket upgrade required.' });
+  // Browsers send cookies on cross-site WebSocket handshakes, so the origin check is the CSRF guard here.
+  if (request.headers.get('origin') !== url.origin) return json(403, { error: 'Cross-site request blocked.' });
+  const offered = (request.headers.get('sec-websocket-protocol') ?? '').split(',').map(s => s.trim());
+  if (!offered.includes(SSH_PROTOCOL)) return json(426, { error: 'SSH WebSocket subprotocol required.' });
+  if (typeof env.NEXUS_GATEWAY?.fetch !== 'function') return json(503, { error: 'The gateway is not connected.' });
+  let upstream;
+  try {
+    upstream = await env.NEXUS_GATEWAY.fetch(new Request(`http://nexus-gateway.internal/v1/ssh/${target}`, {
+      method: 'GET', redirect: 'manual', signal: request.signal,
+      headers: { authorization: `Bearer ${assertion}`, upgrade: 'websocket', 'sec-websocket-protocol': SSH_PROTOCOL },
+    }));
+  } catch {
+    return json(502, { error: 'The SSH relay is unavailable.' });
+  }
+  const chosen = upstream.headers.get('sec-websocket-protocol');
+  if (upstream.status !== 101 || !upstream.webSocket || (chosen !== null && chosen !== SSH_PROTOCOL)) {
+    return json(upstream.status === 429 ? 429 : 502, { error: upstream.status === 429 ? 'Too many SSH sessions are open.' : 'The SSH relay is unavailable.' });
+  }
+  return new Response(null, { status: 101, webSocket: upstream.webSocket, headers: { 'sec-websocket-protocol': SSH_PROTOCOL } });
 }
 
 const SIGN_IN_PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -141,7 +181,12 @@ export default {
     }
     if (p === '/api/me') {
       if (request.method !== 'GET') return secure(json(405, { error: 'Method not allowed.' }), true);
-      return secure(json(200, { email: who.email, expiresAt: who.exp }), true);
+      return secure(json(200, { email: who.email, expiresAt: who.exp, devices: relayDevices(env) }), true);
+    }
+    const ssh = SSH_TARGET.exec(p.slice('/api'.length));
+    if (ssh) {
+      const res = await sshTunnel(request, env, url, assertion, ssh[1]);
+      return res.status === 101 ? res : secure(res, true);
     }
     return secure(await proxy(request, env, url, assertion), true);
   },

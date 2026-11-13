@@ -52,8 +52,10 @@ step diagrams.
 ### 🔒 Web app
 **`/app`** · owner only
 
-NexusAI status and chat, read-only workspace files on Debian and NixOS,
-PS5 models, agent runs and a security page, behind Cloudflare Access.
+The iPhone app's abilities in a browser: SSH terminals and full SFTP on Debian
+and NixOS through the gateway relay, live host metrics, NexusAI chat with
+attachments, profiles and web research, PS5 model switching and agent runs,
+behind Cloudflare Access.
 
 </td>
 </tr>
@@ -87,14 +89,16 @@ flowchart LR
 |---|---|---|
 | **Cloudflare Access** | Guards `/app` and `/api`. It's the same Access application as the `nexus-gateway` Worker, so the gateway accepts its tokens. | Zero Trust dashboard |
 | **Token check** | Verifies every Access token itself: RS256 signature, issuer, audience, expiry and owner email. Missing settings fail closed with 401. | [`worker/access.js`](worker/access.js) |
-| **Route allowlist** | Mirrors Nexus Desktop's gateway classifier. Only read and inference routes pass; writes, model load/unload, agent runs, patches, commands and the SSH relay are refused before the gateway. | [`worker/routes.js`](worker/routes.js) |
-| **Request checks** | Posts must be same-origin JSON within a size limit. Workspace paths are validated. Only the Access assertion is forwarded, never cookies. | [`worker/index.js`](worker/index.js) |
+| **Route allowlist** | The iPhone app's routes: status, AI, search and research, PS5 model load/unload, agent run start/cancel. Workspace patches and commands, conversation writes and unknown routes are refused before the gateway. | [`worker/routes.js`](worker/routes.js) |
+| **Request checks** | Posts must come from this origin; bodies must be JSON within a size limit, and control actions take no body. Workspace paths are validated. Only the Access assertion is forwarded, never cookies. | [`worker/index.js`](worker/index.js) |
+| **SSH tunnel** | `/api/v1/ssh/{debian,nixos}` is a WebSocket to the gateway's SSH relay, needing this origin and the `nexus-ssh-v1` subprotocol. SSH itself (curve25519, AES-GCM) runs in the browser, so the Worker only passes ciphertext. The relay holds the SSH key; the browser holds none. Relay host keys are confirmed on first use and pinned, and a changed key is refused. | [`src/app/ssh.ts`](src/app/ssh.ts) |
 | **Headers** | Strict CSP with no inline scripts, `frame-ancestors 'none'`, HSTS, `no-store` behind sign-in. | [`worker/index.js`](worker/index.js) |
 | **Browser** | Gateway data is rendered as text, never HTML. Chats stay in `sessionStorage` unless you keep them. Files that usually hold secrets are never sent to the AI. | [`src/app/`](src/app) |
 
 > [!IMPORTANT]
-> The web app can't write anything. SSH terminals, host metrics, the editor and Codex/Claude Code stay
-> in Nexus Desktop; model loading and agent runs stay in NexusiOS.
+> Terminals and SFTP are real: what the relay's SSH user may do on the host, the web can do too.
+> Approving workspace patches and commands stays in NexusiOS and Nexus Desktop, and one-time
+> passcodes stay on the iPhone only.
 
 ## Develop
 

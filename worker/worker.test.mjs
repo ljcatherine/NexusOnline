@@ -130,16 +130,15 @@ test('reads are forwarded with only the Access assertion', async () => {
   assert.equal(sent.headers.get('x-forwarded-for'), null);
 });
 
-test('writes, the SSH relay and unknown routes are refused before the gateway', async () => {
+test('workspace writes, conversation writes and unknown routes are refused before the gateway', async () => {
   const token = await sign();
   const env = makeEnv();
   const uuid = '123e4567-e89b-12d3-a456-426614174000';
   const blocked = [
     ['PUT', `/api/v1/conversations/${uuid}`], ['DELETE', `/api/v1/conversations/${uuid}`],
-    ['POST', '/api/v1/nexus/models/0123456789abcdef/load'], ['POST', '/api/v1/nexus/models/unload'],
-    ['POST', '/api/v1/nexus/agent-runs'], ['POST', `/api/v1/nexus/agent-runs/${'a'.repeat(32)}/cancel`],
+    ['POST', '/api/v1/nexus/models/NOTHEX/load'], ['GET', '/api/v1/nexus/models/unload'],
     ['POST', '/api/v1/nexus/workspaces/debian/gw/tasks'], ['POST', '/api/v1/nexus/workspaces/debian/gw/patches'],
-    ['GET', '/api/v1/ssh/debian'], ['GET', '/api/v1/minecraft/panel'], ['GET', '/api/healthz'], ['GET', '/api/v2/anything'],
+    ['GET', '/api/v1/ssh/windows'], ['GET', '/api/v1/minecraft/panel'], ['GET', '/api/healthz'], ['GET', '/api/v2/anything'],
     ['GET', '/api/v1/nexus/workspaces/windows'],
   ];
   for (const [method, path] of blocked) {
@@ -187,9 +186,55 @@ test('gateway redirects and failures do not leak', async () => {
   assert.equal(down.status, 502);
 });
 
-test('allowlist matches Desktop read and inference routes', () => {
+test('allowlist matches the iPhone app routes', () => {
   assert.ok(classify('GET', '/v1/nexus/workspaces/nixos/home/context'));
   assert.ok(classify('POST', '/v1/research'));
   assert.equal(classify('GET', '/v1/chat/completions'), null);
   assert.equal(classify('POST', '/v1/models'), null);
+});
+
+test('iPhone-app controls pass with no body and only from this origin', async () => {
+  const token = await sign();
+  const env = makeEnv();
+  const run = 'a'.repeat(32);
+  for (const path of ['/api/v1/nexus/models/0123456789abcdef/load', '/api/v1/nexus/models/unload', `/api/v1/nexus/agent-runs/${run}/cancel`]) {
+    assert.equal((await worker.fetch(req(path, { token, method: 'POST' }), env)).status, 403, `${path} without origin`);
+    assert.equal((await worker.fetch(req(path, { token, method: 'POST', headers: { origin: ORIGIN }, body: '{"x":1}' }), env)).status, 413, `${path} with body`);
+    assert.equal((await worker.fetch(req(path, { token, method: 'POST', headers: { origin: ORIGIN } }), env)).status, 200, path);
+  }
+  assert.equal(env.calls.length, 3);
+  const start = await worker.fetch(req('/api/v1/nexus/agent-runs', { token, method: 'POST', headers: { origin: ORIGIN, 'content-type': 'application/json' }, body: '{"prompt":"hi"}' }), env);
+  assert.equal(start.status, 200);
+});
+
+test('SSH tunnel needs the owner, this origin, a WebSocket and the subprotocol', async () => {
+  const token = await sign();
+  const ws = { origin: ORIGIN, upgrade: 'websocket', 'sec-websocket-protocol': 'nexus-ssh-v1' };
+  const fake = {};
+  const env = makeEnv(() => ({ status: 101, webSocket: fake, headers: new Headers({ 'sec-websocket-protocol': 'nexus-ssh-v1' }) }));
+  assert.equal((await worker.fetch(req('/api/v1/ssh/debian', { headers: ws }), env)).status, 401, 'no token');
+  assert.equal((await worker.fetch(req('/api/v1/ssh/debian', { token, headers: { ...ws, origin: 'https://evil.example' } }), env)).status, 403, 'other origin');
+  assert.equal((await worker.fetch(req('/api/v1/ssh/debian', { token, headers: { ...ws, upgrade: '' } }), env)).status, 426, 'not a websocket');
+  assert.equal((await worker.fetch(req('/api/v1/ssh/debian', { token, headers: { ...ws, 'sec-websocket-protocol': 'x' } }), env)).status, 426, 'wrong protocol');
+  assert.equal((await worker.fetch(req('/api/v1/ssh/debian?x=1', { token, headers: ws }), env)).status, 426, 'query');
+  assert.equal(env.calls.length, 0);
+  let res;
+  try { res = await worker.fetch(req('/api/v1/ssh/nixos', { token, headers: ws }), env); } catch (e) {
+    // Node's Response cannot carry status 101; workerd can. Reaching here means the Worker tried to return the upgrade.
+    assert.match(String(e), /101|status/);
+  }
+  if (res) assert.equal(res.status, 101);
+  const sent = env.calls[0];
+  assert.equal(new URL(sent.url).pathname, '/v1/ssh/nixos');
+  assert.equal(sent.headers.get('authorization'), `Bearer ${token}`);
+  assert.equal(sent.headers.get('sec-websocket-protocol'), 'nexus-ssh-v1');
+  const failed = makeEnv(() => new Response('nope', { status: 500 }));
+  assert.equal((await worker.fetch(req('/api/v1/ssh/debian', { token, headers: ws }), failed)).status, 502);
+});
+
+test('relay devices come only from valid config', async () => {
+  const token = await sign();
+  const env = { ...makeEnv(), RELAY_DEVICES: JSON.stringify([{ name: 'Debian', username: 'liam', target: 'debian' }, { username: 'root;rm', target: 'debian' }, { username: 'x', target: 'windows' }]) };
+  const me = await (await worker.fetch(req('/api/me', { token }), env)).json();
+  assert.deepEqual(me.devices, [{ name: 'Debian', username: 'liam', target: 'debian' }]);
 });

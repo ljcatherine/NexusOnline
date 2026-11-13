@@ -111,10 +111,61 @@ export const prefs = {
 };
 export function chatStore(): Storage { return prefs.keepChats ? localStorage : sessionStorage; }
 
+/** Clears chats and drafts. Keeps the motion choice, device usernames and host-key pins (none are secret). */
 export function clearLocalData() {
+  const keep = new Set(['nexus.motion', 'nexus.devices', 'nexus.hostkeys']);
   for (const s of [localStorage, sessionStorage]) {
-    try { Object.keys(s).filter(k => k.startsWith('nexus.') && k !== 'nexus.motion').forEach(k => s.removeItem(k)); } catch { /* blocked */ }
+    try { Object.keys(s).filter(k => k.startsWith('nexus.') && !keep.has(k)).forEach(k => s.removeItem(k)); } catch { /* blocked */ }
   }
+}
+
+/** The signed-in identity and configured relay devices, fetched once per page. */
+let mePromise: Promise<any> | null = null;
+export function me(): Promise<{ email: string; expiresAt: number; devices?: any[] } | null> {
+  mePromise ??= fetch('/api/me', { credentials: 'same-origin', redirect: 'manual' }).then(r => r.ok ? r.json() : null).catch(() => null);
+  return mePromise;
+}
+
+/** Segmented control like the iPhone app's pickers. */
+export function segmented<T extends string>(label: string, options: [T, string][], value: T, onChange: (v: T) => void) {
+  const wrap = h('div', { class: 'seg', role: 'group', 'aria-label': label });
+  const btns = options.map(([v, text]) => h('button', {
+    type: 'button', class: 'seg-b', 'aria-pressed': String(v === value),
+    onclick: () => { btns.forEach(b => b.setAttribute('aria-pressed', String(b === btn(v)))); onChange(v); },
+  }, text));
+  const btn = (v: T) => btns[options.findIndex(o => o[0] === v)];
+  wrap.append(...btns);
+  return wrap;
+}
+
+/** Rounded icon tile, like NexusIconTile in the iPhone app. */
+export function tile(glyph: string, tone = 'accent') { return h('span', { class: `tile ${tone}`, 'aria-hidden': 'true' }, glyph); }
+
+/** Sub-navigation between related views (Devices: Terminal/Files, AI: Chat/Models/Runs). */
+export function subnav(items: [string, string][], current: string) {
+  return h('nav', { class: 'subnav', 'aria-label': 'Section' }, ...items.map(([hash, text]) =>
+    h('a', { href: `#${hash}`, 'aria-current': hash === current ? 'page' : null }, text)));
+}
+
+export function download(name: string, data: BlobPart, type = 'application/octet-stream') {
+  const url = URL.createObjectURL(new Blob([data], { type }));
+  const a = h('a', { href: url, download: name });
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30_000);
+}
+
+/** Warns before likely secrets leave the browser (same idea as the iPhone app's secret warnings). */
+export function findSecrets(text: string): string[] {
+  const rules: [string, RegExp][] = [
+    ['private key', /-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----/],
+    ['API key or token assignment', /(?:api[_-]?key|secret|token|passwd|password|authorization)\s*[:=]\s*['"]?[^\s'"]{8,}/i],
+    ['AWS access key', /\bAKIA[0-9A-Z]{16}\b/],
+    ['GitHub token', /\bgh[pousr]_[A-Za-z0-9]{36,}\b/],
+    ['OpenAI-style key', /\bsk-[A-Za-z0-9_-]{20,}\b/],
+    ['bearer token', /\bBearer\s+[A-Za-z0-9._-]{20,}/],
+    ['JWT', /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/],
+  ];
+  return rules.filter(([, re]) => re.test(text)).map(([name]) => name);
 }
 
 /** Mirrors Desktop's context rules: these files are never sent to an AI. */

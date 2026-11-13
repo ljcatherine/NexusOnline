@@ -12,9 +12,14 @@ The Worker checks the Access token's signature, issuer, audience, expiry and ema
 on every `/app` and `/api` request. If Access is missing, misconfigured or the
 Worker's settings are empty, those paths answer **401**. They fail closed.
 
-`/api` forwards only the routes Nexus Desktop classes as read or inference
-(`worker/routes.js`). Writes, model load/unload, agent run start/cancel, patches,
-commands and the SSH relay are refused before they reach the gateway.
+`/api` forwards the routes the iPhone app uses (`worker/routes.js`): reads, AI,
+PS5 model load/unload and agent run start/cancel. Workspace patches and commands,
+conversation writes and unknown routes are refused before they reach the gateway.
+
+`/api/v1/ssh/{debian|nixos}` is the SSH tunnel: a WebSocket to the gateway's SSH
+relay (the same one the iPhone app uses). The Worker requires this origin and the
+`nexus-ssh-v1` subprotocol. The SSH session runs in the browser, and the relay
+connects to the host with its own key, so no SSH key or password ever reaches the browser.
 
 ## Before you start
 
@@ -66,6 +71,12 @@ cp wrangler.example.jsonc wrangler.jsonc
 | `OWNER_EMAIL` | The one email allowed in |
 | `vpc_services[0].service_id` | The same ID as in the `nexus-gateway` Worker's config |
 
+Optional: `RELAY_DEVICES` prefills the SSH usernames on the Devices page, like the
+iPhone app's `NexusRelayDevices`, e.g.
+`[{"name":"Debian","username":"<relay user>","target":"debian"}]`. Each `username`
+must match that target's user in the gateway's `NEXUS_SSH_TARGETS_JSON`. Without it,
+you type the username once per browser.
+
 ## 4. Deploy
 
 ```bash
@@ -86,9 +97,11 @@ It stops if a test fails.
 3. Sign in as any other account. Access refuses it, and so does the Worker.
 4. Signed in, run this in the browser console. It should print `403`:
    ```js
-   (await fetch('/api/v1/nexus/models/unload', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })).status
+   (await fetch('/api/v1/nexus/workspaces/debian/x/patches', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })).status
    ```
-5. Check the response headers of `/app/`: `content-security-policy`,
+5. Open **Devices → Connect** for Debian. Confirm that the fingerprint shown matches
+   `ssh-keygen -lf <relay host key>.pub` on the gateway, then open a terminal.
+6. Check the response headers of `/app/`: `content-security-policy`,
    `x-frame-options: DENY` and `cache-control: no-store, private`.
 
 ## Optional hardening in the Cloudflare dashboard
@@ -114,4 +127,5 @@ npm run preview:worker
 
 This runs the real Worker at `http://localhost:8788` with sample data and a
 locally signed token. `SIGNED_OUT=1 npm run preview:worker` shows the sign-in
-page. `scripts/preview.mjs` is never deployed.
+page. `SSH_RELAY_PORT=<port>` pipes the SSH tunnel to a local test relay (any SSH
+server behind a `nexus-ssh-v1` WebSocket). `scripts/preview.mjs` is never deployed.
