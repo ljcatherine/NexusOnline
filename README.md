@@ -54,8 +54,8 @@ step diagrams.
 
 The iPhone app's abilities in a browser: SSH terminals and full SFTP on Debian
 and NixOS through the gateway relay, live host metrics, NexusAI chat with
-attachments, profiles and web research, PS5 model switching and agent runs,
-behind Cloudflare Access.
+attachments, profiles and web research, PS5 model switching and agent runs
+(Nexus or DeepSeek Harness engine), behind Cloudflare Access.
 
 </td>
 </tr>
@@ -74,6 +74,14 @@ behind Cloudflare Access.
 | **Nexus Online** | Web · Astro and Workers | this repository |
 
 Setup for the whole ecosystem: [nexus.liamjc.dev/docs](https://nexus.liamjc.dev/docs/).
+
+## DeepSeek Harness runs
+
+**AI → Agent runs → Engine → DeepSeek Harness** starts the run with `engine: "dsh"`. The
+orchestrator then runs [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) in its
+networkless sandbox on NexusAI, read-only and with only the Nexus workspace tools (NexusBackend
+`integrations/dsh`). The Worker passes the field through unchanged. Until the orchestrator is
+started with `NEXUS_DSH_IMAGE`, such a run fails with "DeepSeek Harness engine is not configured".
 
 ## How it is secured
 
