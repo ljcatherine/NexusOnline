@@ -5,12 +5,20 @@ const tone = (s: string) => s === 'completed' ? 'ok' : s === 'failed' ? 'err' : 
 const HEX32 = /^[0-9a-f]{32}$/;
 const PROMPT_LIMIT = 48 * 1024;
 type Host = 'debian' | 'nixos';
+/** Orchestrator agent engines offered on the web. `dsh` needs NEXUS_DSH_IMAGE on the orchestrator (else 503). */
+type Engine = 'nexus' | 'dsh';
+const ENGINE_NOTE: Record<Engine, string> = {
+  nexus: '',
+  dsh: 'DeepSeek Harness runs in the orchestrator\'s sandbox on NexusAI: read-only, with only the Nexus workspace tools.',
+};
 
 export function mount(root: HTMLElement): Cleanup {
   root.append(viewHeader('AI', 'Agent runs on the PS5 orchestrator. Start one against a workspace, follow it live, cancel it any time.',
     subnav([['chat', 'Chat'], ['models', 'Models'], ['runs', 'Agent runs']], 'runs')));
 
   let host: Host = 'debian';
+  let engine: Engine = 'nexus';
+  const engineNote = h('p', { class: 'muted' });
   const wsSelect = h('select', { 'aria-label': 'Workspace' }, h('option', { value: '' }, 'Loading…'));
   const path = h('input', { type: 'text', placeholder: 'Folder in the workspace (optional)', 'aria-label': 'Folder in the workspace' });
   const subagents = h('select', { 'aria-label': 'Subagents' }, ...[0, 1, 2, 3].map(n => h('option', { value: String(n) }, n ? `${n} subagent${n > 1 ? 's' : ''}` : 'No subagents')));
@@ -19,7 +27,9 @@ export function mount(root: HTMLElement): Cleanup {
   const formMsg = h('div', {});
   const form = h('form', { class: 'card run-form' },
     h('div', { class: 'row' }, segmented<Host>('Host', [['debian', 'Debian'], ['nixos', 'NixOS']], host, v => { host = v; loadWorkspaces(); }), wsSelect, subagents),
-    path, prompt, h('div', { class: 'row end' }, formMsg, startBtn));
+    h('div', { class: 'row' }, segmented<Engine>('Engine', [['nexus', 'Nexus'], ['dsh', 'DeepSeek Harness']], engine,
+      v => { engine = v; engineNote.textContent = ENGINE_NOTE[v]; })),
+    engineNote, path, prompt, h('div', { class: 'row end' }, formMsg, startBtn));
 
   const listEl = h('div', { class: 'card runs' }, h('p', { class: 'muted shimmer' }, 'Loading runs…'));
   const detail = h('section', { class: 'card run-detail' }, h('div', { class: 'empty' }, h('h2', {}, 'Pick a run'), h('p', {}, 'Its phase, events and result appear here and refresh while it runs.')));
@@ -90,6 +100,7 @@ export function mount(root: HTMLElement): Cleanup {
       const r = await api('/v1/nexus/agent-runs', { method: 'POST', body: JSON.stringify({
         prompt: text, history: [], workspace: { host, workspace_id: wsSelect.value, path: folder },
         subagents: Number(subagents.value), auto_compact: true,
+        ...(engine === 'dsh' ? { engine } : {}),
       }) });
       if (!HEX32.test(String(r?.id))) throw new Error('The orchestrator returned an unexpected reply.');
       prompt.value = '';
