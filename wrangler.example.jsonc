@@ -25,11 +25,15 @@
   },
   // Same private VPC service the existing nexus-gateway Worker uses.
   "vpc_services": [
-    { "binding": "NEXUS_GATEWAY", "service_id": "REPLACE_WITH_VPC_SERVICE_ID", "remote": true }
+    { "binding": "NEXUS_GATEWAY", "service_id": "REPLACE_WITH_VPC_SERVICE_ID", "remote": true },
+    // Nexus Mail service on Debian (127.0.0.1:8898), same tunnel. Secret: wrangler secret put MAIL_SERVICE_TOKEN
+    { "binding": "NEXUS_MAIL", "service_id": "REPLACE_WITH_MAIL_VPC_SERVICE_ID", "remote": true }
   ],
-  // Inbox storage. Create with: npx wrangler d1 create nexus-mail
+  // Holds incoming mail only while Debian is unreachable. Create with: npx wrangler d1 create nexus-mail
   "d1_databases": [
     { "binding": "MAIL", "database_name": "nexus-mail", "database_id": "REPLACE_WITH_D1_DATABASE_ID", "migrations_dir": "migrations" }
   ],
+  // Retries the held mail every 5 minutes.
+  "triggers": { "crons": ["*/5 * * * *"] },
   "observability": { "enabled": true }
 }

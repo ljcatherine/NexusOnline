@@ -3,10 +3,10 @@
 //   /app/*                   web app, owner only (Cloudflare Access + token check here)
 //   /api/v1/*                gateway proxy, owner only, the iPhone app's route allowlist
 //   /api/v1/ssh/{host}       WebSocket SSH tunnel to the gateway relay (bytes only; SSH runs in the browser)
-//   MAIL_HOST (mail.*)       private inbox, owner only on every path; email() stores incoming mail in D1
+//   MAIL_HOST (mail.*)       Nexus Mail, owner only on every path; the mailbox itself lives on Debian (NEXUS_MAIL tunnel)
 import { classify, workspaceQuery, SSH_TARGET } from './routes.js';
 import { verifyAccess } from './access.js';
-import { receive, mailApi } from './mail.js';
+import { receive, mailApi, drainQueue } from './mail.js';
 
 const CSP = [
   "default-src 'self'",
@@ -177,6 +177,7 @@ async function mailHost(request, env, url) {
 
 export default {
   email: (message, env) => receive(message, env),
+  scheduled: (_event, env, ctx) => ctx.waitUntil(drainQueue(env)),
 
   async fetch(request, env) {
     const url = new URL(request.url);

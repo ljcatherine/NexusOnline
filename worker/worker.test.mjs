@@ -239,72 +239,112 @@ test('relay devices come only from valid config', async () => {
   assert.deepEqual(me.devices, [{ name: 'Debian', username: 'liam', target: 'debian' }]);
 });
 
-// --- private inbox (mail host) ---
+// --- Nexus Mail (mail host -> Debian mail service) ---
 import { fakeD1 } from '../scripts/fake-d1.mjs';
+import { drainQueue } from './mail.js';
 const MAIL = 'https://mail.example.com';
-const RAW = [
-  'From: Alice Example <alice@example.com>', 'To: me@example.com', 'Subject: =?UTF-8?B?SGVsbG8g8J+Ri4==?=',
-  'MIME-Version: 1.0', 'Content-Type: multipart/mixed; boundary="b1"', '',
-  '--b1', 'Content-Type: text/plain; charset=utf-8', '', 'Plain body', '',
-  '--b1', 'Content-Type: text/html; charset=utf-8', '', '<p>HTML <b>body</b></p>', '',
-  '--b1', 'Content-Type: text/plain; name="notes.txt"', 'Content-Disposition: attachment; filename="notes.txt"', '', 'hi', '--b1--', '',
-].join('\r\n');
-const incoming = (raw, extra = {}) => ({
-  from: 'bounce@example.com', to: 'me@example.com', rawSize: raw.length,
+const MAIL_TOKEN = 'm'.repeat(48);
+const RAW = 'From: Sam <sam@example.org>\r\nTo: me@example.com\r\nSubject: Hi\r\n\r\nHello\r\n';
+const incoming = (raw = RAW, extra = {}) => ({
+  from: 'bounce@example.org', to: 'me@example.com', rawSize: raw.length,
   raw: new Response(raw).body, rejected: null, setReject(r) { this.rejected = r; }, ...extra,
 });
-const mailEnv = () => ({ ...makeEnv(), MAIL_HOST: 'mail.example.com', MAIL: fakeD1() });
+function mailEnv(serviceResponse = () => Response.json({ ok: true })) {
+  const mailCalls = [];
+  return {
+    ...makeEnv(), MAIL_HOST: 'mail.example.com', MAIL: fakeD1(), MAIL_SERVICE_TOKEN: MAIL_TOKEN, mailCalls,
+    NEXUS_MAIL: { fetch: async req => { mailCalls.push({ req, body: req.body ? new Uint8Array(await req.arrayBuffer()) : null }); return serviceResponse(req); } },
+  };
+}
 const mreq = (path, opts = {}) => new Request(MAIL + path, opts);
+const queued = async env => (await env.MAIL.prepare('SELECT COUNT(*) n FROM inbound_queue').first()).n;
+const THREAD = '6f1d2c3b-4a5e-4f60-8172-93a4b5c6d7e8';
 
-test('incoming mail is parsed and stored', async () => {
+test('incoming mail is handed to Debian with the service token', async () => {
   const env = mailEnv();
-  await worker.email(incoming(RAW), env);
-  const token = await sign();
-  const list = await (await worker.fetch(mreq('/api/mail', { headers: { 'cf-access-jwt-assertion': token } }), env)).json();
-  assert.equal(list.messages.length, 1);
-  const m = list.messages[0];
-  assert.equal(m.subject, 'Hello 👋');
-  assert.equal(m.from_name, 'Alice Example');
-  assert.equal(m.from_addr, 'alice@example.com');
-  assert.equal(m.has_attachments, 1);
-  const full = await (await worker.fetch(mreq(`/api/mail/${m.id}`, { headers: { 'cf-access-jwt-assertion': token } }), env)).json();
-  assert.match(full.text, /Plain body/);
-  assert.match(full.html, /<b>body<\/b>/);
-  assert.deepEqual(full.attachments.map(a => a.filename), ['notes.txt']);
+  await worker.email(incoming(), env);
+  const [{ req: sent, body }] = env.mailCalls;
+  assert.equal(sent.url, 'http://nexus-mail.internal/inbound');
+  assert.equal(sent.headers.get('authorization'), `Bearer ${MAIL_TOKEN}`);
+  assert.equal(sent.headers.get('x-envelope-to'), 'me@example.com');
+  assert.equal(new TextDecoder().decode(body), RAW);
+  assert.equal(await queued(env), 0);
 });
 
-test('oversized mail is refused, not stored', async () => {
-  const env = mailEnv();
-  const msg = incoming(RAW, { rawSize: 11 * 1024 * 1024 });
-  await worker.email(msg, env);
-  assert.match(msg.rejected, /too large/);
-  const list = await (await worker.fetch(mreq('/api/mail', { headers: { 'cf-access-jwt-assertion': await sign() } }), env)).json();
-  assert.equal(list.messages.length, 0);
+test('mail waits in D1 while Debian is down, then the cron hands it over', async () => {
+  let up = false;
+  const env = mailEnv(() => up ? Response.json({ ok: true }) : new Response('down', { status: 502 }));
+  await worker.email(incoming(), env);
+  assert.equal(await queued(env), 1);
+  assert.equal(await drainQueue(env), 0);
+  up = true;
+  const waits = [];
+  await worker.scheduled({}, env, { waitUntil: p => waits.push(p) });
+  await Promise.all(waits);
+  assert.equal(await queued(env), 0);
+  assert.equal(new TextDecoder().decode(env.mailCalls.at(-1).body), RAW);
+  // Too big to hold: refuse, so the sender's server retries instead of the mail being lost.
+  up = false;
+  await assert.rejects(worker.email(incoming('x'.repeat(2_000_000)), env));
+  const huge = incoming(RAW, { rawSize: 26 * 1024 * 1024 });
+  await worker.email(huge, env);
+  assert.match(huge.rejected, /too large/);
 });
 
 test('mail host is owner-only on every path; public host never serves mail', async () => {
   const env = mailEnv();
-  for (const p of ['/', '/api/mail', '/_astro/x.js']) assert.equal((await worker.fetch(mreq(p), env)).status, 401, p);
-  assert.equal((await worker.fetch(mreq('/api/mail', { headers: { 'cf-access-jwt-assertion': await sign({ email: 'someone@example.com' }) } }), env)).status, 401);
+  for (const p of ['/', '/api/mail/threads', '/_astro/x.js']) assert.equal((await worker.fetch(mreq(p), env)).status, 401, p);
+  assert.equal((await worker.fetch(mreq('/api/mail/threads', { headers: { 'cf-access-jwt-assertion': await sign({ email: 'someone@example.com' }) } }), env)).status, 401);
   const page = await worker.fetch(mreq('/', { headers: { 'cf-access-jwt-assertion': await sign() } }), env);
   assert.equal(await page.text(), 'asset /mail/');
   assert.equal(page.headers.get('cache-control'), 'no-store, private');
   assert.equal((await worker.fetch(req('/mail/'), env)).status, 404);
-  assert.equal((await worker.fetch(req('/api/mail', { token: await sign() }), env)).status, 403);
-  assert.equal(env.calls.length, 0);
+  assert.equal((await worker.fetch(req('/api/mail/threads', { token: await sign() }), env)).status, 403);
+  assert.equal(env.calls.length + env.mailCalls.length, 0);
 });
 
-test('mail changes need same origin and a valid id', async () => {
+test('mail API forwards only allowlisted routes, with the token and clean queries', async () => {
+  const env = mailEnv(r => Response.json({ path: new URL(r.url).pathname + new URL(r.url).search }));
+  const auth = { 'cf-access-jwt-assertion': await sign() };
+  const res = await worker.fetch(mreq('/api/mail/threads?folder=sent&q=50%25+off&offset=50', { headers: auth }), env);
+  assert.equal((await res.json()).path, '/threads?folder=sent&q=50%25+off&offset=50');
+  assert.equal(env.mailCalls[0].req.headers.get('authorization'), `Bearer ${MAIL_TOKEN}`);
+  assert.equal(res.headers.get('authorization'), null);
+  const refused = [
+    ['/api/mail/threads?folder=../../etc', 'GET', 400], ['/api/mail/threads?folder=inbox&folder=sent', 'GET', 400],
+    ['/api/mail/threads?x=1', 'GET', 400], [`/api/mail/threads/${THREAD}?x=1`, 'GET', 400], ['/api/mail/inbound', 'POST', 404],
+    ['/api/mail/threads/not-a-uuid', 'GET', 404], [`/api/mail/threads/${THREAD}/explode`, 'POST', 404], ['/api/mail/send', 'GET', 404],
+  ];
+  for (const [path, method, status] of refused) {
+    assert.equal((await worker.fetch(mreq(path, { method, headers: { ...auth, origin: MAIL } }), env)).status, status, path);
+  }
+  assert.equal(env.mailCalls.length, 1);
+});
+
+test('mail changes need same-origin JSON within limits', async () => {
   const env = mailEnv();
-  await worker.email(incoming(RAW), env);
-  const token = await sign();
-  const auth = { 'cf-access-jwt-assertion': token };
-  const [{ id }] = (await (await worker.fetch(mreq('/api/mail', { headers: auth }), env)).json()).messages;
-  assert.equal((await worker.fetch(mreq(`/api/mail/${id}`, { method: 'DELETE', headers: { ...auth, origin: 'https://evil.example' } }), env)).status, 403);
-  assert.equal((await worker.fetch(mreq(`/api/mail/${id}`, { method: 'DELETE', headers: auth }), env)).status, 403);
-  assert.equal((await worker.fetch(mreq('/api/mail/not-an-id', { headers: auth }), env)).status, 404);
-  assert.equal((await worker.fetch(mreq(`/api/mail/${id}/read`, { method: 'POST', headers: { ...auth, origin: MAIL } }), env)).status, 200);
-  assert.equal((await (await worker.fetch(mreq('/api/mail', { headers: auth }), env)).json()).messages[0].read, 1);
-  assert.equal((await worker.fetch(mreq(`/api/mail/${id}`, { method: 'DELETE', headers: { ...auth, origin: MAIL } }), env)).status, 200);
-  assert.equal((await worker.fetch(mreq(`/api/mail/${id}`, { headers: auth }), env)).status, 404);
+  const auth = { 'cf-access-jwt-assertion': await sign() };
+  const send = (headers, body = '{}') => worker.fetch(mreq('/api/mail/send', { method: 'POST', headers: { ...auth, ...headers }, body }), env);
+  assert.equal((await send({ origin: 'https://evil.example', 'content-type': 'application/json' })).status, 403);
+  assert.equal((await send({ 'content-type': 'application/json' })).status, 403);
+  assert.equal((await send({ origin: MAIL, 'content-type': 'text/plain' })).status, 415);
+  assert.equal((await send({ origin: MAIL, 'content-type': 'application/json', 'content-length': String(40 * 1024 * 1024) })).status, 413);
+  assert.equal((await worker.fetch(mreq(`/api/mail/threads/${THREAD}/trash`, { method: 'POST', headers: auth }), env)).status, 403);
+  assert.equal(env.mailCalls.length, 0);
+  assert.equal((await send({ origin: MAIL, 'content-type': 'application/json', 'content-length': '2' })).status, 200);
+  assert.equal((await worker.fetch(mreq(`/api/mail/threads/${THREAD}/trash`, { method: 'POST', headers: { ...auth, origin: MAIL } }), env)).status, 200);
+  assert.equal(env.mailCalls.length, 2);
+});
+
+test('attachments always download; a missing or down mail server fails cleanly', async () => {
+  const auth = { 'cf-access-jwt-assertion': await sign() };
+  const env = mailEnv(() => new Response('<script>alert(1)</script>', { headers: { 'content-type': 'text/html', 'content-disposition': 'inline' } }));
+  const res = await worker.fetch(mreq(`/api/mail/messages/${THREAD}/attachments/0`, { headers: auth }), env);
+  assert.equal(res.headers.get('content-type'), 'application/octet-stream');
+  assert.equal(res.headers.get('content-disposition'), 'attachment');
+  assert.equal(res.headers.get('x-content-type-options'), 'nosniff');
+  const down = mailEnv(() => { throw new Error('tunnel down'); });
+  assert.equal((await worker.fetch(mreq('/api/mail/threads', { headers: auth }), down)).status, 502);
+  const none = { ...mailEnv(), MAIL_SERVICE_TOKEN: '' };
+  assert.equal((await worker.fetch(mreq('/api/mail/threads', { headers: auth }), none)).status, 503);
 });

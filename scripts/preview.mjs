@@ -7,6 +7,9 @@
 import http from 'node:http';
 import net from 'node:net';
 import { readFile } from 'node:fs/promises';
+import { existsSync, mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { spawn } from 'node:child_process';
 import { extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import worker from '../worker/index.js';
@@ -114,18 +117,39 @@ function gateway(req) {
 }
 env.NEXUS_GATEWAY = { fetch: async req => gateway(req) };
 
-// --- sample inbox (open http://mail.localhost:PORT) ---
-const sample = (from, subject, body, html = '', mins = 0, to = 'liam@nexus.local') => {
-  const raw = [`From: ${from}`, `To: ${to}`, `Subject: ${subject}`, 'MIME-Version: 1.0',
-    ...(html ? ['Content-Type: multipart/alternative; boundary="b"', '', '--b', 'Content-Type: text/plain; charset=utf-8', '', body, '--b', 'Content-Type: text/html; charset=utf-8', '', html, '--b--']
-      : ['Content-Type: text/plain; charset=utf-8', '', body])].join('\r\n');
-  return worker.email({ from: from.match(/<(.+)>/)?.[1] ?? from, to, rawSize: raw.length, raw: new Response(raw).body, setReject() {} }, env)
-    .then(() => env.MAIL.prepare('UPDATE mail SET received_at = received_at - ? WHERE rowid = last_insert_rowid()').bind(mins * 60_000).run());
-};
-await sample('Cloudflare <noreply@notify.cloudflare.com>', 'Your domain liamjc.dev renews in 30 days', 'Auto-renew is on. No action needed.', '<h2 style="color:#f38020">Renewal reminder</h2><p>Auto-renew is <b>on</b> for <b>liamjc.dev</b>. No action is needed.</p><img src="https://example.com/pixel.gif" alt="">', 2880);
-await sample('Sam Rivera <sam@example.org>', 'Minecraft server this weekend?', 'Hey!\n\nAre we still on for Saturday? I can bring the new modpack.\n\nSam', '', 300, 'hello@nexus.local');
-await sample('GitHub <noreply@github.com>', '[NexusMinecraft] Marketplace build passed', 'All checks passed on main.\n\n  test_marketplace.py ... ok\n  frontend build ... ok', '', 45);
-await sample('Ada Lovelace <ada@example.com>', 'Notes on the analytical engine', 'Sending the notes I mentioned. The engine might act upon other things besides number.\n\nAda', '<p>Sending the notes I mentioned.</p><blockquote style="border-left:3px solid #9cbcff;padding-left:12px;color:#444">The engine might act upon other things besides number.</blockquote><p>Ada</p>', 3);
+// --- Nexus Mail: the real mail service from NexusBackend, with a recording relay (open http://mail.localhost:PORT) ---
+const MAIL_SERVICE = process.env.NEXUS_MAIL_SERVICE ?? fileURLToPath(new URL('../../NexusBackend/mail/', import.meta.url));
+if (existsSync(join(MAIL_SERVICE, 'server.py'))) {
+  const MAIL_PORT = Number(process.env.MAIL_SERVICE_PORT ?? PORT + 110), mailToken = 'p'.repeat(48);
+  const proc = spawn(process.env.PYTHON ?? (process.platform === 'win32' ? 'python' : 'python3'), [fileURLToPath(new URL('./preview-mail.py', import.meta.url)), MAIL_SERVICE], {
+    stdio: ['ignore', 'inherit', 'inherit'],
+    env: { ...process.env, NEXUS_MAIL_TOKEN: mailToken, NEXUS_MAIL_LISTEN: `127.0.0.1:${MAIL_PORT}`, NEXUS_MAIL_DIR: mkdtempSync(join(tmpdir(), 'nexus-mail-')),
+      NEXUS_MAIL_FROM: 'liam@nexus.local,hello@nexus.local', NEXUS_MAIL_FROM_NAME: 'Liam', NEXUS_MAIL_SMTP_USER: 'preview', NEXUS_MAIL_SMTP_PASSWORD: 'preview' },
+  });
+  process.on('exit', () => proc.kill());
+  env.MAIL_SERVICE_TOKEN = mailToken;
+  env.NEXUS_MAIL = { fetch: async req => { const u = new URL(req.url); return realFetch(`http://127.0.0.1:${MAIL_PORT}${u.pathname}${u.search}`, { method: req.method, headers: req.headers, body: req.body ? await req.arrayBuffer() : undefined }); } };
+  for (let i = 0; i < 100; i++) { try { await realFetch(`http://127.0.0.1:${MAIL_PORT}/config`); break; } catch { await new Promise(r => setTimeout(r, 100)); } }
+  const sample = (from, subject, body, { html = '', to = 'Liam <liam@nexus.local>', id = `<${crypto.randomUUID()}@example.org>`, extra = '', file } = {}) => {
+    const head = [`From: ${from}`, `To: ${to}`, `Subject: ${subject}`, `Message-ID: ${id}`, ...(extra ? [extra] : []), 'MIME-Version: 1.0'];
+    const parts = html ? ['Content-Type: multipart/alternative; boundary="a"', '', '--a', 'Content-Type: text/plain; charset=utf-8', '', body, '--a', 'Content-Type: text/html; charset=utf-8', '', html, '--a--']
+      : ['Content-Type: text/plain; charset=utf-8', '', body];
+    const raw = (file ? [...head, 'Content-Type: multipart/mixed; boundary="m"', '', '--m', ...parts, '--m',
+      `Content-Type: ${file.type}`, `Content-Disposition: attachment; filename="${file.name}"`, 'Content-Transfer-Encoding: base64', '', Buffer.from(file.data).toString('base64'), '--m--']
+      : [...head, ...parts]).join('\r\n');
+    return worker.email({ from: from.match(/<(.+)>/)?.[1] ?? from, to: to.match(/<(.+)>/)?.[1] ?? to, rawSize: raw.length, raw: new Response(raw).body, setReject() {} }, env);
+  };
+  await sample('Cloudflare <noreply@notify.cloudflare.com>', 'Your domain liamjc.dev renews in 30 days', 'Auto-renew is on. No action needed.',
+    { html: '<h2 style="color:#f38020">Renewal reminder</h2><p>Auto-renew is <b>on</b> for <b>liamjc.dev</b>. No action is needed.</p><img src="https://example.com/pixel.gif" alt="">' });
+  await sample('Sam Rivera <sam@example.org>', 'Minecraft server this weekend?', 'Hey!\n\nAre we still on for Saturday? I can bring the new modpack.\n\nSam', { id: '<mc-1@example.org>', to: 'hello@nexus.local' });
+  await sample('Liam <liam@nexus.local>', 'Re: Minecraft server this weekend?', 'Yes! I will start the server at 7.\n\n> Are we still on for Saturday?', { id: '<mc-2@nexus.local>', to: 'Sam Rivera <sam@example.org>', extra: 'In-Reply-To: <mc-1@example.org>' });
+  await sample('Sam Rivera <sam@example.org>', 'Re: Minecraft server this weekend?', 'Perfect, see you then. Here is the modpack list.\n\nSam', { id: '<mc-3@example.org>', extra: 'In-Reply-To: <mc-2@nexus.local>\r\nReferences: <mc-1@example.org> <mc-2@nexus.local>', file: { name: 'modpack.txt', type: 'text/plain', data: 'create\nsodium\njourneymap\n' } });
+  await sample('GitHub <noreply@github.com>', '[NexusMinecraft] Marketplace build passed', 'All checks passed on main.\n\n  test_marketplace.py ... ok\n  frontend build ... ok\n\nhttps://github.com/ljcatherine/NexusMinecraft/actions');
+  await sample('Ada Lovelace <ada@example.com>', 'Notes on the analytical engine', 'Sending the notes I mentioned. The engine might act upon other things besides number.\n\nAda',
+    { html: '<p>Sending the notes I mentioned.</p><blockquote>The engine might act upon other things besides number.</blockquote><p>Ada</p>', file: { name: 'notes.pdf', type: 'application/pdf', data: '%PDF-1.4 sample' } });
+} else {
+  console.warn(`Nexus Mail preview: ${MAIL_SERVICE} not found. Set NEXUS_MAIL_SERVICE to NexusBackend/mail to preview the inbox.`);
+}
 
 // --- HTTP server ---
 http.createServer(async (req, res) => {

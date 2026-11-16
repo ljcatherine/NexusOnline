@@ -1,170 +1,364 @@
-// Nexus Mail (mail.liamjc.dev). Mail is rendered with textContent / attributes only;
-// HTML bodies go into a sandboxed iframe (no scripts, no same-origin, page CSP blocks remote images).
-import { api, raw, h, ApiError } from '../app/lib';
+// Nexus Mail (mail.<domain>): a Gmail-style client for the mailbox on the owner's Debian box.
+// Mail content is rendered with textContent / attributes only. HTML bodies go into a sandboxed
+// iframe without scripts; the page CSP (inherited by srcdoc) blocks remote images and trackers.
+import { h, safeUrl } from '../app/lib';
+import { call, icon, toast, size, when, type Addr } from './shared';
+import { compose, setupComposer, addrList } from './compose';
 
-type Summary = { id: string; received_at: number; envelope_to: string; from_addr: string; from_name: string; subject: string; snippet: string; read: number; has_attachments: number };
-type Full = Summary & { envelope_from: string; text: string; html: string; attachments: { filename: string; mimeType: string; size: number }[] };
+type Thread = {
+  thread_id: string; id: string; folder: string; received_at: number; subject: string; from_addr: string; from_name: string;
+  to: Addr[]; people: string[]; snippet: string; count: number; unread: boolean; starred: boolean; has_attachments: boolean;
+};
+type Message = {
+  id: string; thread_id: string; folder: string; received_at: number; subject: string; from_addr: string; from_name: string;
+  to: Addr[]; cc: Addr[]; bcc: Addr[]; reply_to: string; envelope_to: string; message_id: string; text: string; html: string;
+  attachments: { filename: string; type: string; size: number }[]; starred: boolean; read: boolean; reply_of: string; forward_of: string;
+};
 
+const FOLDERS: [string, string, string][] = [
+  ['inbox', 'Inbox', 'inbox'], ['starred', 'Starred', 'star'], ['sent', 'Sent', 'send'],
+  ['drafts', 'Drafts', 'draft'], ['all', 'All mail', 'all'], ['trash', 'Trash', 'trash'],
+];
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const PAGE = 50;
 const $ = (id: string) => document.getElementById(id)!;
-const listEl = $('list'), readerEl = $('reader'), boxesEl = $('boxes'), search = $('search') as HTMLInputElement, statusEl = $('status');
-let all: Summary[] = [], shown: Summary[] = [], box = 'inbox', openId = '', query = '';
+const main = $('main'), folderNav = $('folders'), searchInput = $('search') as HTMLInputElement;
 
-const plain = (s: string) => s.replace(/<(style|script|head)[\s\S]*?(<\/\1>|$)/gi, ' ').replace(/<[^>]*>?/g, ' ')
-  .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim();
-const who = (m: { from_name: string; from_addr: string }) => m.from_name || m.from_addr;
-const hue = (s: string) => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7) % 360;
-const avatar = (m: Summary) => h('span', { class: 'av', style: `--h:${hue(m.from_addr)}`, 'aria-hidden': 'true' }, (who(m).match(/[\p{L}\p{N}]/u)?.[0] ?? '?').toUpperCase());
+let config = { from: [] as string[], name: '', sending: false };
+let mine = new Set<string>();
+let view = { folder: 'inbox', q: '', thread: '' };
+let offset = 0, threads: Thread[] = [], counts = { inbox: 0, drafts: 0 }, focusIndex = -1;
+let current: Message[] = [];
+let loadToken = 0;
 
-function when(ms: number, long = false) {
-  const d = new Date(ms), now = new Date();
-  if (long) return d.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-  if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', ...(d.getFullYear() !== now.getFullYear() && { year: 'numeric' }) });
+// ---------- routing: #/inbox, #/sent/<thread>, #/search/<query>[/<thread>] ----------
+function parse() {
+  const parts = location.hash.replace(/^#\/?/, '').split('/');
+  const folder = parts[0] === 'search' ? 'search' : FOLDERS.some(f => f[0] === parts[0]) ? parts[0] : 'inbox';
+  const q = folder === 'search' ? decodeURIComponent(parts[1] ?? '') : '';
+  const last = parts.at(-1) ?? '';
+  return { folder, q, thread: UUID.test(last) ? last : '' };
 }
-const size = (n: number) => n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1048576).toFixed(1)} MB`;
-let flashTimer = 0;
-function flash(text: string, tone: 'ok' | 'err' = 'ok') {
-  statusEl.textContent = text; statusEl.dataset.tone = tone; statusEl.classList.add('on');
-  clearTimeout(flashTimer); flashTimer = window.setTimeout(() => statusEl.classList.remove('on'), 3200);
-}
+const base = () => view.folder === 'search' ? `#/search/${encodeURIComponent(view.q)}` : `#/${view.folder}`;
+const go = (hash: string) => { if (location.hash !== hash) location.hash = hash; else route(); };
 
-// --- mailboxes: Inbox, Unread, then one per address mail was sent to ---
-function renderBoxes() {
-  const unread = all.filter(m => !m.read).length;
-  const addrs = [...new Set(all.map(m => m.envelope_to.toLowerCase()))].sort();
-  const btn = (id: string, label: string, icon: string, count: number) => h('button', {
-    type: 'button', class: 'box', 'aria-pressed': String(box === id), onclick: () => { box = id; renderBoxes(); renderList(); },
-  }, h('span', { class: 'bi', 'aria-hidden': 'true' }, icon), h('span', { class: 'bl' }, label), count ? h('span', { class: 'bc' }, count) : null);
-  boxesEl.replaceChildren(
-    btn('inbox', 'Inbox', '✉', all.length), btn('unread', 'Unread', '●', unread),
-    ...(addrs.length > 1 ? [h('p', { class: 'rail-h' }, 'Addresses'), ...addrs.map(a => btn(`to:${a}`, a, '@', all.filter(m => !m.read && m.envelope_to.toLowerCase() === a).length))] : []));
-  document.title = `${unread ? `(${unread}) ` : ''}Inbox · Nexus Mail`;
+function route() {
+  const next = parse();
+  if (next.folder !== view.folder || next.q !== view.q) { offset = 0; focusIndex = -1; }
+  view = next;
+  searchInput.value = view.q;
+  document.body.classList.remove('drawer');
+  drawFolders();
+  view.thread ? openThread(view.thread) : loadList();
 }
 
-function renderList() {
-  const q = query.toLowerCase();
-  shown = all.filter(m => (box === 'inbox' || (box === 'unread' ? !m.read : m.envelope_to.toLowerCase() === box.slice(3)))
-    && (!q || `${m.from_name} ${m.from_addr} ${m.subject} ${m.snippet}`.toLowerCase().includes(q)));
-  if (!shown.length) {
-    listEl.replaceChildren(h('li', { class: 'blank' }, h('b', {}, q ? 'No matches' : box === 'unread' ? 'All caught up' : 'No mail yet'),
-      h('span', {}, q ? 'Try a name, address or word from the subject.' : 'New messages show up here on their own.')));
-    return;
-  }
-  listEl.replaceChildren(...shown.map(m => h('li', {}, h('button', {
-    type: 'button', class: `item${m.read ? '' : ' unread'}`, 'aria-current': String(m.id === openId), 'data-id': m.id, onclick: () => open(m.id),
-  }, avatar(m),
-    h('span', { class: 'it-top' }, h('b', { class: 'from' }, who(m)), h('time', {}, when(m.received_at))),
-    h('span', { class: 'subj' }, m.subject || '(no subject)', m.has_attachments ? h('span', { class: 'clip', title: 'Has attachments' }, ' ⎘') : null),
-    h('span', { class: 'snip' }, plain(m.snippet))))));
+// ---------- rail ----------
+function drawFolders() {
+  folderNav.replaceChildren(...FOLDERS.map(([id, label, ic]) => {
+    const n = id === 'inbox' ? counts.inbox : id === 'drafts' ? counts.drafts : 0;
+    return h('a', { href: `#/${id}`, class: `folder${n && id === 'inbox' ? ' has-unread' : ''}`, 'aria-current': view.folder === id ? 'page' : null },
+      icon(ic), h('span', { class: 'fl' }, label), n ? h('span', { class: 'fc' }, n) : null);
+  }));
+  const title = view.folder === 'search' ? 'Search' : FOLDERS.find(f => f[0] === view.folder)?.[1] ?? 'Inbox';
+  document.title = `${counts.inbox ? `(${counts.inbox}) ` : ''}${title} · Nexus Mail`;
 }
 
-async function load(quiet = false) {
+// ---------- list ----------
+function who(t: Thread) {
+  if (view.folder === 'drafts' || t.folder === 'drafts') return [h('span', { class: 'draft-l' }, 'Draft'), ' ', t.to.map(a => a.name || a.address).join(', ')];
+  if (view.folder === 'sent') return `To: ${t.to.map(a => a.name || a.address).join(', ') || '(no recipients)'}`;
+  return `${t.people.join(', ')}${t.count > 1 ? ` (${t.count})` : ''}`;
+}
+
+async function act(tid: string, action: string, done?: string, undo?: string) {
   try {
-    const r = await api<{ messages: Summary[] }>('/mail');
-    const before = new Set(all.map(m => m.id));
-    const fresh = all.length ? r.messages.filter(m => !before.has(m.id)).length : 0;
-    all = r.messages; renderBoxes(); renderList();
-    if (fresh) flash(`${fresh} new message${fresh > 1 ? 's' : ''}`);
+    await call(`/threads/${tid}/${action}`, { method: 'POST' });
+    if (done) toast(done, undo ? { label: 'Undo', run: async () => { await call(`/threads/${tid}/${undo}`, { method: 'POST' }).catch(() => {}); refresh(); } } : undefined);
   } catch (e) {
-    if (!quiet) listEl.replaceChildren(h('li', { class: 'blank err', role: 'alert' }, h('b', {}, 'Could not load mail'), h('span', {}, (e as Error).message)));
+    toast((e as Error).message, undefined, 'err');
   }
 }
+const ARCHIVE = ['archive', 'Conversation archived', 'inbox'] as const;
+const TRASH = ['trash', 'Conversation moved to Trash', 'untrash'] as const;
+const RESTORE = ['untrash', 'Conversation restored', 'trash'] as const;
 
-// --- reader ---
-function frame(html: string) {
+function rowActions(t: Thread) {
+  const btn = (name: string, title: string, run: () => void) => h('button', { type: 'button', class: 'ic', title, onclick: (e: Event) => { e.stopPropagation(); run(); } }, icon(name));
+  if (view.folder === 'drafts') return [btn('trash', 'Discard draft', async () => { await call(`/drafts/${t.id}`, { method: 'DELETE' }).catch(() => {}); toast('Draft discarded'); refresh(); })];
+  const out = [];
+  if (t.folder === 'inbox') out.push(btn('archive', 'Archive (e)', async () => { await act(t.thread_id, ...ARCHIVE); refresh(); }));
+  if (view.folder === 'trash') out.push(btn('restore', 'Restore', async () => { await act(t.thread_id, ...RESTORE); refresh(); }));
+  else out.push(btn('trash', 'Delete (#)', async () => { await act(t.thread_id, ...TRASH); refresh(); }));
+  out.push(btn('unread', t.unread ? 'Mark as read' : 'Mark as unread', async () => { await act(t.thread_id, t.unread ? 'read' : 'unread'); refresh(); }));
+  return out;
+}
+
+function row(t: Thread, i: number) {
+  const star = h('button', { type: 'button', class: `star${t.starred ? ' on' : ''}`, 'aria-pressed': String(t.starred), title: t.starred ? 'Starred' : 'Not starred',
+    onclick: async (e: Event) => { e.stopPropagation(); t.starred = !t.starred; star.classList.toggle('on', t.starred); star.replaceChildren(icon('star', t.starred)); await act(t.thread_id, t.starred ? 'star' : 'unstar'); } },
+    icon('star', t.starred));
+  const open = () => view.folder === 'drafts' ? openDraft(t.id) : go(`${base()}/${t.thread_id}`);
+  return h('li', {}, h('div', {
+    class: `row${t.unread ? ' unread' : ''}${i === focusIndex ? ' focus' : ''}`, role: 'link', tabindex: '0',
+    onclick: open, onkeydown: (e: KeyboardEvent) => { if (e.key === 'Enter') open(); }, onfocus: () => { focusIndex = i; },
+  }, view.folder === 'drafts' ? h('span', { class: 'star-gap' }) : star,
+    h('span', { class: 'who' }, who(t)),
+    h('span', { class: 'line' }, h('span', { class: 'subj' }, t.subject || '(no subject)'), t.snippet ? h('span', { class: 'snip' }, ` — ${t.snippet}`) : null),
+    h('span', { class: 'clip', title: t.has_attachments ? 'Has attachments' : null }, t.has_attachments ? icon('attach') : null),
+    h('time', { datetime: new Date(t.received_at).toISOString() }, when(t.received_at)),
+    h('span', { class: 'hover' }, ...rowActions(t))));
+}
+
+async function loadList(quiet = false) {
+  const token = ++loadToken;
+  const folder = view.folder === 'search' ? 'all' : view.folder;
+  if (!quiet) main.replaceChildren(listShell(), h('div', { class: 'loading' }, 'Loading…'));
+  try {
+    const params = new URLSearchParams({ folder, offset: String(offset) });
+    if (view.q) params.set('q', view.q);
+    const res = await call<{ threads: Thread[]; more: boolean; total: number; counts: typeof counts }>(`/threads?${params}`);
+    if (token !== loadToken || view.thread) return;
+    threads = res.threads; counts = res.counts; drawFolders();
+    if (focusIndex >= threads.length) focusIndex = threads.length - 1;
+    main.replaceChildren(listShell(res.total, res.more), threads.length ? h('ul', { class: 'rows' }, ...threads.map(row)) : emptyState());
+  } catch (e) {
+    if (token !== loadToken) return;
+    if (!quiet) main.replaceChildren(listShell(), problem(e as Error));
+  }
+}
+const refresh = () => (view.thread ? openThread(view.thread, true) : loadList(true));
+
+function listShell(total = 0, more = false) {
+  const label = view.folder === 'search' ? `Results for “${view.q}”` : FOLDERS.find(f => f[0] === view.folder)?.[1] ?? '';
+  return h('div', { class: 'bar' },
+    h('h1', { class: 'bar-title' }, label),
+    h('button', { type: 'button', class: 'ic', title: 'Refresh', onclick: () => loadList() }, icon('refresh')),
+    ...(view.folder === 'trash' && total ? [h('span', { class: 'hint' }, 'Open a conversation here to delete it for good.')] : []),
+    h('span', { class: 'grow' }),
+    total ? h('span', { class: 'pager' }, `${offset + 1}–${Math.min(offset + PAGE, total)} of ${total}`,
+      h('button', { type: 'button', class: 'ic', title: 'Newer', disabled: offset === 0, onclick: () => { offset = Math.max(0, offset - PAGE); loadList(); } }, icon('left')),
+      h('button', { type: 'button', class: 'ic', title: 'Older', disabled: !more, onclick: () => { offset += PAGE; loadList(); } }, icon('right'))) : null);
+}
+
+function emptyState() {
+  const text: Record<string, [string, string]> = {
+    inbox: ['Your inbox is empty', 'New mail to your addresses lands here.'],
+    starred: ['Nothing starred', 'Star a conversation to find it here quickly.'],
+    sent: ['Nothing sent yet', 'Mail you send shows up here.'], drafts: ['No drafts', 'Unsent messages are saved here as you type.'],
+    all: ['No mail yet', 'Everything except Trash shows up here.'], trash: ['Trash is empty', 'Deleted conversations wait here until you remove them for good.'],
+    search: ['No matches', 'Try a name, an address, or a word from the subject or message.'],
+  };
+  const [title, sub] = text[view.folder] ?? text.inbox;
+  return h('div', { class: 'empty' }, icon(FOLDERS.find(f => f[0] === view.folder)?.[2] ?? 'search'), h('b', {}, title), h('span', {}, sub));
+}
+const problem = (e: Error) => h('div', { class: 'empty err', role: 'alert' }, h('b', {}, 'Could not load your mail'), h('span', {}, e.message),
+  h('button', { type: 'button', class: 'pill-btn', onclick: () => refresh() }, 'Try again'));
+
+// ---------- conversation ----------
+const plain = (html: string) => new DOMParser().parseFromString(html, 'text/html').body.textContent?.replace(/\n{3,}/g, '\n\n').trim() ?? '';
+const nameOf = (m: Message) => m.folder === 'sent' ? 'me' : m.from_name || m.from_addr;
+const hue = (s: string) => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7) % 360;
+const avatar = (name: string, addr: string) => h('span', { class: 'av', style: `--h:${hue(addr.toLowerCase())}`, 'aria-hidden': 'true' }, (name.match(/[\p{L}\p{N}]/u)?.[0] ?? '?').toUpperCase());
+const people = (list: Addr[]) => list.map(a => mine.has(a.address.toLowerCase()) ? 'me' : a.name || a.address).join(', ');
+
+function linkify(text: string) {
+  const out: (Node | string)[] = [];
+  for (const part of text.split(/(https?:\/\/[^\s<>"')\]]+)/g)) {
+    const url = /^https?:\/\//.test(part) ? safeUrl(part) : null;
+    out.push(url ? h('a', { href: url, target: '_blank', rel: 'noopener noreferrer' }, part) : part);
+  }
+  return out;
+}
+
+function htmlFrame(html: string) {
   const doc = '<!doctype html><meta charset="utf-8"><meta name="referrer" content="no-referrer"><base target="_blank">'
-    + '<style>html{background:#fff;color:#1b1f27;font:15px/1.55 system-ui,sans-serif}body{margin:20px;overflow-wrap:anywhere}img{max-width:100%;height:auto}</style>' + html;
-  return h('iframe', { class: 'body-html', title: 'Message', sandbox: 'allow-popups allow-popups-to-escape-sandbox', srcdoc: doc });
+    + '<style>html{background:#fff;color:#1d2230;font:14.5px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}body{margin:18px 20px;overflow-wrap:anywhere}img{max-width:100%;height:auto}blockquote{margin:0 0 0 .6em;padding-left:.8em;border-left:3px solid #c9d4ea;color:#4a5468}</style>' + html;
+  // No allow-scripts, so nothing in the mail runs; same-origin only lets this page size the frame to its content.
+  const frame = h('iframe', { class: 'html', title: 'Message', sandbox: 'allow-same-origin allow-popups allow-popups-to-escape-sandbox', srcdoc: doc });
+  const fit = () => { const d = frame.contentDocument; if (d?.documentElement) frame.style.height = `${d.documentElement.scrollHeight + 4}px`; };
+  frame.addEventListener('load', () => { fit(); setTimeout(fit, 300); });
+  return frame;
 }
 
-async function open(id: string) {
-  openId = id;
-  document.body.classList.add('reading');
-  listEl.querySelectorAll('.item').forEach(b => b.setAttribute('aria-current', String((b as HTMLElement).dataset.id === id)));
-  readerEl.replaceChildren(h('div', { class: 'blank' }, h('span', {}, 'Opening…')));
-  let m: Full;
-  try { m = await api<Full>(`/mail/${id}`); } catch (e) {
-    if (e instanceof ApiError && e.status === 404) { flash('That message was deleted.', 'err'); await load(); return close(); }
-    readerEl.replaceChildren(h('div', { class: 'blank err', role: 'alert' }, h('b', {}, 'Could not open it'), h('span', {}, (e as Error).message)));
-    return;
-  }
-  if (openId !== id) return;
-  if (!m.read) { raw(`/mail/${id}/read`, { method: 'POST' }).catch(() => {}); setRead(id, 1); }
+function parseAddr(raw: string): Addr | null {
+  const m = raw.match(/^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/) ?? raw.match(/^\s*()([^\s<>]+@[^\s<>]+)\s*$/);
+  return m ? { name: m[1].trim(), address: m[2].trim() } : null;
+}
+const reSubject = (s: string, p: 'Re' | 'Fwd') => new RegExp(`^${p}:`, 'i').test(s.trim()) ? s : `${p}: ${s}`;
+const fromFor = (m: Message) => [m.envelope_to, ...m.to.map(a => a.address), ...m.cc.map(a => a.address)].map(a => a.toLowerCase()).find(a => config.from.includes(a));
+const bodyText = (m: Message) => m.text || plain(m.html);
 
-  let mode: 'html' | 'text' = m.html ? 'html' : 'text';
-  const body = h('div', { class: 'body' });
-  const remote = /<img[^>]+src\s*=\s*["']?https?:/i.test(m.html);
-  const draw = () => body.replaceChildren(
-    ...(mode === 'html' && remote ? [h('p', { class: 'note' }, 'Remote images are blocked so senders cannot track when you open this.')] : []),
-    mode === 'html' ? frame(m.html) : h('pre', { class: 'body-text' }, m.text || plain(m.html) || '(empty message)'));
-  const toggle = m.html && m.text ? h('div', { class: 'seg', role: 'group', 'aria-label': 'Show as' },
-    ...(['html', 'text'] as const).map(k => h('button', { type: 'button', 'data-k': k, 'aria-pressed': String(mode === k), onclick: (ev: Event) => {
-      mode = k; draw();
-      (ev.currentTarget as HTMLElement).parentElement!.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.k === k)));
-    } }, k === 'html' ? 'Formatted' : 'Plain'))) : null;
+function reply(m: Message, all: boolean) {
+  const sentByMe = m.folder === 'sent';
+  const to = sentByMe ? m.to : [parseAddr(m.reply_to) ?? { name: m.from_name, address: m.from_addr }];
+  const seen = new Set(to.map(a => a.address.toLowerCase()));
+  const cc = all ? [...(sentByMe ? [] : m.to), ...m.cc].filter(a => {
+    const k = a.address.toLowerCase();
+    if (mine.has(k) || seen.has(k)) return false;
+    seen.add(k); return true;
+  }) : [];
+  const quoted = bodyText(m).split('\n').map(l => `> ${l}`).join('\n');
+  const subject = reSubject(m.subject, 'Re');
+  compose({
+    to: addrList(to), cc: addrList(cc), subject, replyOf: m.id, title: subject, focusBody: true, from: fromFor(m),
+    text: `\n\nOn ${when(m.received_at, true)}, ${m.from_name ? `${m.from_name} <${m.from_addr}>` : m.from_addr} wrote:\n${quoted}\n`,
+  });
+}
 
-  let armed = 0;
-  const del = h('button', { type: 'button', class: 'act danger', title: 'Delete (#)', onclick: async () => {
-    if (!armed) { armed = window.setTimeout(() => { armed = 0; del.textContent = 'Delete'; }, 3000); del.textContent = 'Click to confirm'; return; }
-    await remove(id);
-  } }, 'Delete');
+function forward(m: Message) {
+  const subject = reSubject(m.subject, 'Fwd');
+  const head = ['---------- Forwarded message ---------', `From: ${m.from_name ? `${m.from_name} <${m.from_addr}>` : m.from_addr}`,
+    `Date: ${when(m.received_at, true)}`, `Subject: ${m.subject}`, `To: ${addrList(m.to).join(', ')}`, ...(m.cc.length ? [`Cc: ${addrList(m.cc).join(', ')}`] : [])];
+  compose({ subject, title: subject, forwardOf: m.id, forwardFiles: m.attachments, from: fromFor(m), text: `\n\n${head.join('\n')}\n\n${bodyText(m)}\n` });
+}
 
-  readerEl.replaceChildren(h('article', { class: 'msg' },
-    h('div', { class: 'msg-bar' },
-      h('button', { type: 'button', class: 'act back', onclick: close, 'aria-label': 'Back to inbox' }, '← Inbox'),
-      h('span', { class: 'grow' }), toggle,
-      h('button', { type: 'button', class: 'act', title: 'Mark unread (u)', onclick: () => markUnread(id) }, 'Mark unread'), del),
-    h('h1', { class: 'msg-subj', tabindex: '-1' }, m.subject || '(no subject)'),
-    h('div', { class: 'msg-meta' }, avatar(m),
-      h('div', { class: 'who' }, h('b', {}, who(m)), m.from_name ? h('span', { class: 'addr' }, ` <${m.from_addr}>`) : null,
-        h('div', { class: 'to' }, `to ${m.envelope_to}`, m.envelope_from.toLowerCase() !== m.from_addr.toLowerCase() ? ` · via ${m.envelope_from}` : '')),
-      h('time', {}, when(m.received_at, true))),
-    ...(m.attachments.length ? [h('ul', { class: 'atts', 'aria-label': 'Attachments' }, ...m.attachments.map(a => h('li', { title: 'Attachments are listed but not stored' }, h('span', { 'aria-hidden': 'true' }, '⎘ '), a.filename, h('small', {}, size(a.size)))))] : []),
-    body));
+function messageCard(m: Message, open: boolean, last: boolean) {
+  const card = h('article', { class: `msg${open ? ' open' : ''}` });
+  const draw = () => {
+    const header = h('header', { class: 'msg-h', onclick: (e: Event) => { if (!last && !(e.target as Element).closest('button, a')) { open = !open; card.classList.toggle('open', open); draw(); } } },
+      avatar(nameOf(m), m.from_addr),
+      h('div', { class: 'msg-who' },
+        h('div', {}, h('b', {}, nameOf(m) === 'me' ? (config.name || 'me') : nameOf(m)), open ? h('span', { class: 'addr' }, ` <${m.from_addr}>`) : null),
+        open ? h('div', { class: 'msg-to' }, `to ${people(m.to) || 'undisclosed recipients'}`, m.cc.length ? `, cc ${people(m.cc)}` : '', m.bcc.length ? `, bcc ${people(m.bcc)}` : '')
+          : h('div', { class: 'msg-snip' }, bodyText(m).replace(/\s+/g, ' ').slice(0, 140))),
+      h('time', { title: when(m.received_at, true) }, when(m.received_at)),
+      ...(open ? [h('span', { class: 'msg-acts' },
+        h('button', { type: 'button', class: 'ic', title: 'Reply', onclick: () => reply(m, false) }, icon('reply')),
+        h('button', { type: 'button', class: 'ic', title: 'Forward', onclick: () => forward(m) }, icon('forward')))] : []));
+    const remote = /<img[^>]+src\s*=\s*["']?https?:/i.test(m.html);
+    card.replaceChildren(header, ...(open ? [
+      ...(m.html && remote ? [h('p', { class: 'note' }, 'Remote images are hidden so senders cannot tell when you open this.')] : []),
+      h('div', { class: 'msg-body' }, m.html ? htmlFrame(m.html) : h('div', { class: 'text' }, ...linkify(m.text || '(no message text)'))),
+      ...(m.attachments.length ? [h('div', { class: 'atts' }, ...m.attachments.map((a, i) => h('a', {
+        class: 'att', href: `/api/mail/messages/${m.id}/attachments/${i}`, download: a.filename, title: `Download ${a.filename}`,
+      }, h('span', { class: 'att-i' }, icon('attach')), h('span', { class: 'att-n' }, a.filename), h('small', {}, size(a.size)), icon('download'))))] : []),
+    ] : []));
+  };
   draw();
-  (readerEl.querySelector('.msg-subj') as HTMLElement).focus({ preventScroll: true });
+  return card;
 }
 
-function close() {
-  openId = ''; document.body.classList.remove('reading');
-  readerEl.replaceChildren(h('div', { class: 'blank' }, h('span', { class: 'big', 'aria-hidden': 'true' }, '✉'), h('b', {}, 'Nothing selected'), h('span', {}, 'Pick a message, or use j and k to move through the list.')));
-  renderList();
-}
-function setRead(id: string, read: number) { const m = all.find(x => x.id === id); if (m) m.read = read; renderBoxes(); renderList(); }
+async function openThread(tid: string, quiet = false) {
+  const token = ++loadToken;
+  if (!quiet) main.replaceChildren(h('div', { class: 'loading' }, 'Opening…'));
+  let data: { messages: Message[] };
+  try { data = await call(`/threads/${tid}`); } catch (e) {
+    if (token !== loadToken) return;
+    if ((e as { status?: number }).status === 404) { toast('That conversation no longer exists.', undefined, 'err'); go(base()); return; }
+    main.replaceChildren(problem(e as Error)); return;
+  }
+  if (token !== loadToken) return;
+  const inTrash = view.folder === 'trash';
+  let msgs = data.messages.filter(m => inTrash ? m.folder === 'trash' : m.folder !== 'trash');
+  if (!msgs.length) msgs = data.messages;
+  current = msgs;
+  if (msgs.some(m => !m.read)) {
+    call(`/threads/${tid}/read`, { method: 'POST' }).then(() => { if (msgs.some(m => m.folder === 'inbox')) counts.inbox = Math.max(0, counts.inbox - 1); drawFolders(); }).catch(() => {});
+  }
 
-async function markUnread(id: string) {
-  try { await raw(`/mail/${id}/unread`, { method: 'POST' }); setRead(id, 0); close(); flash('Marked as unread'); }
-  catch (e) { flash((e as Error).message, 'err'); }
-}
-async function remove(id: string) {
-  const i = shown.findIndex(m => m.id === id);
-  try { await raw(`/mail/${id}`, { method: 'DELETE' }); } catch (e) { flash((e as Error).message, 'err'); return; }
-  all = all.filter(m => m.id !== id); renderBoxes(); renderList(); flash('Deleted');
-  const next = shown[Math.min(i, shown.length - 1)];
-  next && innerWidth > 860 ? open(next.id) : close();
+  const latest = msgs.at(-1)!;
+  const starred = msgs.some(m => m.starred);
+  const where = new Set(msgs.map(m => m.folder));
+  const leave = async (args: readonly [string, string, string]) => { await act(tid, ...args); go(base()); };
+  const tool = (name: string, title: string, run: () => void, filled = false) => h('button', { type: 'button', class: 'ic', title, onclick: run }, icon(name, filled));
+  const others = [...latest.to, ...latest.cc].filter(a => !mine.has(a.address.toLowerCase())).length + (latest.folder === 'sent' ? 0 : 1);
+
+  main.replaceChildren(
+    h('div', { class: 'bar' },
+      tool('back', 'Back (u)', () => go(base())),
+      ...(where.has('inbox') ? [tool('archive', 'Archive (e)', () => leave(ARCHIVE))] : where.has('archive') ? [tool('inbox', 'Move to Inbox', () => leave(['inbox', 'Moved to Inbox', 'archive']))] : []),
+      ...(inTrash ? [tool('restore', 'Restore', () => leave(RESTORE)), h('button', { type: 'button', class: 'pill-btn danger', onclick: () => deleteForever(tid) }, icon('forever'), h('span', {}, 'Delete forever'))]
+        : [tool('trash', 'Delete (#)', () => leave(TRASH))]),
+      tool('unread', 'Mark as unread', async () => { await act(tid, 'unread'); go(base()); }),
+      tool('star', starred ? 'Starred (s)' : 'Star (s)', async () => { await act(tid, starred ? 'unstar' : 'star'); refresh(); }, starred),
+      h('span', { class: 'grow' })),
+    h('div', { class: 'conv' },
+      h('h1', { class: 'conv-subj', tabindex: '-1' }, latest.subject || '(no subject)',
+        ...[...where].filter(f => f !== 'trash' || inTrash).map(f => h('span', { class: 'label' }, FOLDERS.find(x => x[0] === f)?.[1] ?? 'Archived'))),
+      ...msgs.map((m, i) => messageCard(m, i === msgs.length - 1 || !m.read, i === msgs.length - 1)),
+      h('div', { class: 'conv-reply' },
+        h('button', { type: 'button', class: 'pill-btn', onclick: () => reply(latest, false) }, icon('reply'), 'Reply'),
+        others > 1 ? h('button', { type: 'button', class: 'pill-btn', onclick: () => reply(latest, true) }, icon('replyAll'), 'Reply all') : null,
+        h('button', { type: 'button', class: 'pill-btn', onclick: () => forward(latest) }, icon('forward'), 'Forward'))));
+  if (!quiet) (main.querySelector('.conv-subj') as HTMLElement).focus({ preventScroll: true });
 }
 
-// --- keyboard: j/k move, u unread, # delete, / search, Esc back ---
+async function deleteForever(tid: string) {
+  const btn = main.querySelector<HTMLButtonElement>('.pill-btn.danger');
+  if (btn && !btn.dataset.armed) { btn.dataset.armed = '1'; btn.querySelector('span')!.textContent = 'Click again to delete forever'; return; }
+  await act(tid, 'delete', 'Conversation deleted forever');
+  go(base());
+}
+
+async function openDraft(id: string) {
+  try {
+    const d = await call<Message>(`/drafts/${id}`);
+    compose({ id, from: d.from_addr, to: addrList(d.to), cc: addrList(d.cc), bcc: addrList(d.bcc), subject: d.subject, text: d.text,
+      replyOf: d.reply_of || undefined, forwardOf: d.forward_of || undefined, title: d.subject || 'Draft' });
+  } catch (e) { toast((e as Error).message, undefined, 'err'); refresh(); }
+}
+
+// ---------- keyboard (Gmail's keys) ----------
 addEventListener('keydown', e => {
   const t = e.target as HTMLElement;
-  if (e.metaKey || e.ctrlKey || e.altKey) return;
-  if (t.matches('input, textarea')) { if (e.key === 'Escape') { search.value = ''; query = ''; renderList(); search.blur(); } return; }
-  const i = shown.findIndex(m => m.id === openId);
-  if (e.key === 'j' || e.key === 'k') { const n = shown[Math.max(0, Math.min(shown.length - 1, i + (e.key === 'j' ? 1 : -1)))]; if (n) open(n.id); }
-  else if (e.key === '/') search.focus();
-  else if (e.key === 'u' && openId) markUnread(openId);
-  else if (e.key === '#' && openId) remove(openId);
-  else if (e.key === 'Escape' && openId) close();
+  if (e.metaKey || e.ctrlKey || e.altKey || t.closest('input, textarea, select, .composer, [contenteditable]')) return;
+  const rows = [...main.querySelectorAll<HTMLElement>('.row')];
+  const key = e.key;
+  const press = (scope: ParentNode | undefined, sel: string) => (scope?.querySelector(sel) as HTMLButtonElement | null)?.click();
+  if (key === 'c') compose();
+  else if (key === '/') searchInput.focus();
+  else if (view.thread) {
+    const latest = current.at(-1);
+    const bar = main.querySelector('.bar') ?? undefined;
+    if (key === 'u' || key === 'Escape') go(base());
+    else if (key === 'e') press(bar, 'button[title^="Archive"]');
+    else if (key === '#') press(bar, 'button[title^="Delete"]');
+    else if (key === 's') press(bar, 'button[title^="Star"]');
+    else if (latest && key === 'r') reply(latest, false);
+    else if (latest && key === 'a') reply(latest, true);
+    else if (latest && key === 'f') forward(latest);
+    else return;
+  } else if ((key === 'j' || key === 'k') && rows.length) {
+    focusIndex = Math.max(0, Math.min(rows.length - 1, focusIndex + (key === 'j' ? 1 : -1)));
+    rows.forEach((r, i) => r.classList.toggle('focus', i === focusIndex));
+    rows[focusIndex].focus();
+  } else if (key === 'o' && rows[focusIndex]) rows[focusIndex].click();
+  else if (key === 'e') press(rows[focusIndex], 'button[title^="Archive"]');
+  else if (key === '#') press(rows[focusIndex], 'button[title^="Delete"]');
+  else if (key === 's') press(rows[focusIndex], '.star');
   else return;
   e.preventDefault();
 });
 
-search.addEventListener('input', () => { query = search.value.trim(); renderList(); });
-$('refresh').addEventListener('click', async () => { await load(); flash('Up to date'); });
+// ---------- start ----------
+$('search-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const q = searchInput.value.trim();
+  go(q ? `#/search/${encodeURIComponent(q)}` : '#/inbox');
+});
+for (const id of ['compose', 'fab']) $(id).addEventListener('click', () => compose());
+$('compose').prepend(icon('pencil'));
+$('fab').append(icon('pencil'));
+$('menu').append(icon('menu'));
+$('menu').addEventListener('click', () => document.body.classList.toggle('drawer'));
+$('scrim').addEventListener('click', () => document.body.classList.remove('drawer'));
+$('search-icon').append(icon('search'));
+addEventListener('hashchange', route);
+
 fetch('/api/me', { credentials: 'same-origin', redirect: 'manual' }).then(r => r.ok ? r.json() : null)
   .then(me => { $('me').textContent = me?.email ?? 'Session expired. Reload to sign in.'; }).catch(() => {});
 
-close();
-load();
-setInterval(() => document.visibilityState === 'visible' && load(true), 30_000);
-addEventListener('focus', () => load(true));
+async function boot() {
+  try { config = await call('/config'); } catch { /* the list shows the connection problem */ }
+  mine = new Set(config.from);
+  setupComposer(config, tid => {
+    toast('Message sent', { label: 'View message', run: () => go(`#/sent/${tid}`) });
+    if (!view.thread || view.thread === tid) refresh();
+  });
+  call<{ contacts: Addr[] }>('/contacts').then(r => {
+    $('contacts').replaceChildren(...r.contacts.map(c => h('option', { value: c.name ? `${c.name} <${c.address}>` : c.address })));
+  }).catch(() => {});
+  route();
+}
+boot();
+setInterval(() => { if (document.visibilityState === 'visible' && !view.thread && !document.querySelector('.composer:not(.min)')) loadList(true); }, 30_000);
