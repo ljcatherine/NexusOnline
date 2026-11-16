@@ -7,6 +7,7 @@ Nexus Online is one Cloudflare Worker with the built site as static assets.
 | `/`, `/_astro/*` | Anyone | — |
 | `/app/*` | Owner only | Cloudflare Access, then the Worker verifies the Access token |
 | `/api/v1/*` | Owner only | Same, then the route allowlist, then the gateway verifies the token again |
+| `mail.yourdomain/*` | Owner only | Cloudflare Access, then the Worker verifies the Access token (see [Private inbox](#private-inbox)) |
 
 The Worker checks the Access token's signature, issuer, audience, expiry and email
 on every `/app` and `/api` request. If Access is missing, misconfigured or the
@@ -90,6 +91,47 @@ It stops if a test fails.
    ```
 5. Check the response headers of `/app/`: `content-security-policy`,
    `x-frame-options: DENY` and `cache-control: no-store, private`.
+
+## Private inbox
+
+Nexus Mail is a receive-only inbox at its own hostname, for example
+`mail.yourdomain`. Cloudflare Email Routing hands each message to this Worker's
+`email()` handler (`worker/mail.js`), which stores it in a D1 database. The page
+at `mail.yourdomain/` reads it. Every path on that host needs the owner's Access
+token. On the public host, `/mail/` answers 404.
+
+1. Create the database and copy its ID into `d1_databases[0].database_id` in `wrangler.jsonc`:
+   ```bash
+   npx wrangler d1 create nexus-mail
+   ```
+2. Create the table:
+   ```bash
+   npx wrangler d1 migrations apply nexus-mail --remote
+   ```
+3. Set `MAIL_HOST` and the second `routes` entry to `mail.yourdomain`.
+4. In Zero Trust → Access → Applications, open the **same** application as in
+   step 2 and add `mail.yourdomain` as a public hostname, with **no path**, so the
+   whole host is protected.
+5. Deploy with `npm run deploy`.
+6. In the dashboard, open your domain → **Email** → **Email Routing** and turn it on.
+   This adds the MX and SPF records. Under **Routing rules**, create an address
+   (for example `you@yourdomain`), or use **Catch-all**, with the action **Send to a
+   Worker** → `nexus-online`.
+7. Send yourself a test email. It shows up at `mail.yourdomain` within seconds.
+   The page also checks for new mail every 30 seconds.
+
+What it does not do yet:
+
+- **No sending or replying.** Mail only comes in.
+- **Attachments are listed, not stored.** Each message keeps up to 250k
+  characters of text and of HTML. Anything over 10 MB is refused, so the
+  sender gets a bounce.
+- **No spam filter.** Anyone who knows the address can send to it. Use a
+  specific address rather than catch-all if spam starts to pile up.
+- HTML mail opens in a sandboxed frame with no scripts. Remote images are
+  blocked so senders can't track when you open a message.
+
+`npm run preview:worker` also serves a sample inbox at `http://mail.localhost:8788`.
 
 ## Optional hardening in the Cloudflare dashboard
 

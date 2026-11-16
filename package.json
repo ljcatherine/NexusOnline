@@ -10,7 +10,8 @@
     "deploy": "npm test && astro build && wrangler deploy"
   },
   "dependencies": {
-    "astro": "7.4.2"
+    "astro": "7.4.2",
+    "postal-mime": "4.2.0"
   },
   "devDependencies": {
     "wrangler": "4.154.0"

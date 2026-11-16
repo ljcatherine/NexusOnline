@@ -193,3 +193,73 @@ test('allowlist matches Desktop read and inference routes', () => {
   assert.equal(classify('GET', '/v1/chat/completions'), null);
   assert.equal(classify('POST', '/v1/models'), null);
 });
+
+// --- private inbox (mail host) ---
+import { fakeD1 } from '../scripts/fake-d1.mjs';
+const MAIL = 'https://mail.example.com';
+const RAW = [
+  'From: Alice Example <alice@example.com>', 'To: me@example.com', 'Subject: =?UTF-8?B?SGVsbG8g8J+Ri4==?=',
+  'MIME-Version: 1.0', 'Content-Type: multipart/mixed; boundary="b1"', '',
+  '--b1', 'Content-Type: text/plain; charset=utf-8', '', 'Plain body', '',
+  '--b1', 'Content-Type: text/html; charset=utf-8', '', '<p>HTML <b>body</b></p>', '',
+  '--b1', 'Content-Type: text/plain; name="notes.txt"', 'Content-Disposition: attachment; filename="notes.txt"', '', 'hi', '--b1--', '',
+].join('\r\n');
+const incoming = (raw, extra = {}) => ({
+  from: 'bounce@example.com', to: 'me@example.com', rawSize: raw.length,
+  raw: new Response(raw).body, rejected: null, setReject(r) { this.rejected = r; }, ...extra,
+});
+const mailEnv = () => ({ ...makeEnv(), MAIL_HOST: 'mail.example.com', MAIL: fakeD1() });
+const mreq = (path, opts = {}) => new Request(MAIL + path, opts);
+
+test('incoming mail is parsed and stored', async () => {
+  const env = mailEnv();
+  await worker.email(incoming(RAW), env);
+  const token = await sign();
+  const list = await (await worker.fetch(mreq('/api/mail', { headers: { 'cf-access-jwt-assertion': token } }), env)).json();
+  assert.equal(list.messages.length, 1);
+  const m = list.messages[0];
+  assert.equal(m.subject, 'Hello 👋');
+  assert.equal(m.from_name, 'Alice Example');
+  assert.equal(m.from_addr, 'alice@example.com');
+  assert.equal(m.has_attachments, 1);
+  const full = await (await worker.fetch(mreq(`/api/mail/${m.id}`, { headers: { 'cf-access-jwt-assertion': token } }), env)).json();
+  assert.match(full.text, /Plain body/);
+  assert.match(full.html, /<b>body<\/b>/);
+  assert.deepEqual(full.attachments.map(a => a.filename), ['notes.txt']);
+});
+
+test('oversized mail is refused, not stored', async () => {
+  const env = mailEnv();
+  const msg = incoming(RAW, { rawSize: 11 * 1024 * 1024 });
+  await worker.email(msg, env);
+  assert.match(msg.rejected, /too large/);
+  const list = await (await worker.fetch(mreq('/api/mail', { headers: { 'cf-access-jwt-assertion': await sign() } }), env)).json();
+  assert.equal(list.messages.length, 0);
+});
+
+test('mail host is owner-only on every path; public host never serves mail', async () => {
+  const env = mailEnv();
+  for (const p of ['/', '/api/mail', '/_astro/x.js']) assert.equal((await worker.fetch(mreq(p), env)).status, 401, p);
+  assert.equal((await worker.fetch(mreq('/api/mail', { headers: { 'cf-access-jwt-assertion': await sign({ email: 'someone@example.com' }) } }), env)).status, 401);
+  const page = await worker.fetch(mreq('/', { headers: { 'cf-access-jwt-assertion': await sign() } }), env);
+  assert.equal(await page.text(), 'asset /mail/');
+  assert.equal(page.headers.get('cache-control'), 'no-store, private');
+  assert.equal((await worker.fetch(req('/mail/'), env)).status, 404);
+  assert.equal((await worker.fetch(req('/api/mail', { token: await sign() }), env)).status, 403);
+  assert.equal(env.calls.length, 0);
+});
+
+test('mail changes need same origin and a valid id', async () => {
+  const env = mailEnv();
+  await worker.email(incoming(RAW), env);
+  const token = await sign();
+  const auth = { 'cf-access-jwt-assertion': token };
+  const [{ id }] = (await (await worker.fetch(mreq('/api/mail', { headers: auth }), env)).json()).messages;
+  assert.equal((await worker.fetch(mreq(`/api/mail/${id}`, { method: 'DELETE', headers: { ...auth, origin: 'https://evil.example' } }), env)).status, 403);
+  assert.equal((await worker.fetch(mreq(`/api/mail/${id}`, { method: 'DELETE', headers: auth }), env)).status, 403);
+  assert.equal((await worker.fetch(mreq('/api/mail/not-an-id', { headers: auth }), env)).status, 404);
+  assert.equal((await worker.fetch(mreq(`/api/mail/${id}/read`, { method: 'POST', headers: { ...auth, origin: MAIL } }), env)).status, 200);
+  assert.equal((await (await worker.fetch(mreq('/api/mail', { headers: auth }), env)).json()).messages[0].read, 1);
+  assert.equal((await worker.fetch(mreq(`/api/mail/${id}`, { method: 'DELETE', headers: { ...auth, origin: MAIL } }), env)).status, 200);
+  assert.equal((await worker.fetch(mreq(`/api/mail/${id}`, { headers: auth }), env)).status, 404);
+});

@@ -6,7 +6,8 @@
   "compatibility_date": "2026-10-30",
   "workers_dev": false,
   "preview_urls": false,
-  "routes": [{ "pattern": "REPLACE_WITH_HOSTNAME", "custom_domain": true }],
+  "routes": [{ "pattern": "REPLACE_WITH_HOSTNAME", "custom_domain": true },
+    { "pattern": "REPLACE_WITH_MAIL_HOSTNAME", "custom_domain": true }],
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
@@ -18,11 +19,17 @@
   "vars": {
     "ACCESS_TEAM_DOMAIN": "REPLACE_WITH_TEAM.cloudflareaccess.com",
     "ACCESS_AUDIENCE": "REPLACE_WITH_ACCESS_APPLICATION_AUD_TAG",
-    "OWNER_EMAIL": "REPLACE_WITH_OWNER_EMAIL"
+    "OWNER_EMAIL": "REPLACE_WITH_OWNER_EMAIL",
+    // Private inbox host (owner only on every path). Leave unset to turn the inbox off.
+    "MAIL_HOST": "REPLACE_WITH_MAIL_HOSTNAME"
   },
   // Same private VPC service the existing nexus-gateway Worker uses.
   "vpc_services": [
     { "binding": "NEXUS_GATEWAY", "service_id": "REPLACE_WITH_VPC_SERVICE_ID", "remote": true }
+  ],
+  // Inbox storage. Create with: npx wrangler d1 create nexus-mail
+  "d1_databases": [
+    { "binding": "MAIL", "database_name": "nexus-mail", "database_id": "REPLACE_WITH_D1_DATABASE_ID", "migrations_dir": "migrations" }
   ],
   "observability": { "enabled": true }
 }

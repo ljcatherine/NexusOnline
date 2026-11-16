@@ -8,11 +8,12 @@ import { readFile } from 'node:fs/promises';
 import { extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import worker from '../worker/index.js';
+import { fakeD1 } from './fake-d1.mjs';
 
 const PORT = Number(process.env.PORT ?? 8788);
 const DIST = fileURLToPath(new URL('../dist/', import.meta.url));
 const TEAM = 'local-preview.cloudflareaccess.com', AUD = 'f'.repeat(64), OWNER = 'owner@nexus.local';
-const env = { ACCESS_TEAM_DOMAIN: TEAM, ACCESS_AUDIENCE: AUD, OWNER_EMAIL: OWNER };
+const env = { ACCESS_TEAM_DOMAIN: TEAM, ACCESS_AUDIENCE: AUD, OWNER_EMAIL: OWNER, MAIL_HOST: 'mail.localhost', MAIL: fakeD1() };
 
 // --- throwaway signing key standing in for Cloudflare Access ---
 const keys = await crypto.subtle.generateKey({ name: 'RSASSA-PKCS1-v1_5', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' }, true, ['sign', 'verify']);
@@ -97,6 +98,19 @@ function gateway(req) {
 }
 env.NEXUS_GATEWAY = { fetch: async req => gateway(req) };
 
+// --- sample inbox (open http://mail.localhost:PORT) ---
+const sample = (from, subject, body, html = '', mins = 0, to = 'liam@nexus.local') => {
+  const raw = [`From: ${from}`, `To: ${to}`, `Subject: ${subject}`, 'MIME-Version: 1.0',
+    ...(html ? ['Content-Type: multipart/alternative; boundary="b"', '', '--b', 'Content-Type: text/plain; charset=utf-8', '', body, '--b', 'Content-Type: text/html; charset=utf-8', '', html, '--b--']
+      : ['Content-Type: text/plain; charset=utf-8', '', body])].join('\r\n');
+  return worker.email({ from: from.match(/<(.+)>/)?.[1] ?? from, to, rawSize: raw.length, raw: new Response(raw).body, setReject() {} }, env)
+    .then(() => env.MAIL.prepare('UPDATE mail SET received_at = received_at - ? WHERE rowid = last_insert_rowid()').bind(mins * 60_000).run());
+};
+await sample('Cloudflare <noreply@notify.cloudflare.com>', 'Your domain liamjc.dev renews in 30 days', 'Auto-renew is on. No action needed.', '<h2 style="color:#f38020">Renewal reminder</h2><p>Auto-renew is <b>on</b> for <b>liamjc.dev</b>. No action is needed.</p><img src="https://example.com/pixel.gif" alt="">', 2880);
+await sample('Sam Rivera <sam@example.org>', 'Minecraft server this weekend?', 'Hey!\n\nAre we still on for Saturday? I can bring the new modpack.\n\nSam', '', 300, 'hello@nexus.local');
+await sample('GitHub <noreply@github.com>', '[NexusMinecraft] Marketplace build passed', 'All checks passed on main.\n\n  test_marketplace.py ... ok\n  frontend build ... ok', '', 45);
+await sample('Ada Lovelace <ada@example.com>', 'Notes on the analytical engine', 'Sending the notes I mentioned. The engine might act upon other things besides number.\n\nAda', '<p>Sending the notes I mentioned.</p><blockquote style="border-left:3px solid #9cbcff;padding-left:12px;color:#444">The engine might act upon other things besides number.</blockquote><p>Ada</p>', 3);
+
 // --- HTTP server ---
 http.createServer(async (req, res) => {
   const chunks = [];
@@ -104,9 +118,9 @@ http.createServer(async (req, res) => {
   const headers = new Headers();
   for (const [k, v] of Object.entries(req.headers)) if (typeof v === 'string') headers.set(k, v);
   if (!process.env.SIGNED_OUT) headers.set('cf-access-jwt-assertion', await accessToken());
-  const request = new Request(`http://localhost:${PORT}${req.url}`, { method: req.method, headers, body: chunks.length ? Buffer.concat(chunks) : undefined });
+  const request = new Request(`http://${/^(mail\.)?localhost:\d+$/.test(req.headers.host ?? '') ? req.headers.host : `localhost:${PORT}`}${req.url}`, { method: req.method, headers, body: chunks.length ? Buffer.concat(chunks) : undefined });
   const response = await worker.fetch(request, env);
   res.writeHead(response.status, Object.fromEntries(response.headers));
   if (response.body) for await (const chunk of response.body) res.write(chunk);
   res.end();
-}).listen(PORT, () => console.log(`Nexus Online local preview (sample data): http://localhost:${PORT}  ${process.env.SIGNED_OUT ? '[signed out]' : `[signed in as ${OWNER}]`}`));
+}).listen(PORT, () => console.log(`Nexus Online local preview (sample data): http://localhost:${PORT}  (inbox: http://mail.localhost:${PORT})  ${process.env.SIGNED_OUT ? '[signed out]' : `[signed in as ${OWNER}]`}`));
