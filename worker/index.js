@@ -3,8 +3,10 @@
 //   /app/*                   web app, owner only (Cloudflare Access + token check here)
 //   /api/v1/*                gateway proxy, owner only, the iPhone app's route allowlist
 //   /api/v1/ssh/{host}       WebSocket SSH tunnel to the gateway relay (bytes only; SSH runs in the browser)
+//   MAIL_HOST (mail.*)       private inbox, owner only on every path; email() stores incoming mail in D1
 import { classify, workspaceQuery, SSH_TARGET } from './routes.js';
 import { verifyAccess } from './access.js';
+import { receive, mailApi } from './mail.js';
 
 const CSP = [
   "default-src 'self'",
@@ -156,10 +158,31 @@ main{max-width:460px;display:grid;gap:14px}h1{font-size:28px;margin:0}p{margin:0
 <p><a href="/cdn-cgi/access/logout">Sign out of the current account</a></p>
 <p><a href="/">Back to the Nexus home page</a></p></main></body></html>`;
 
+// mail.<domain>: every path is owner-only. The inbox page lives at /mail/ in dist/.
+async function mailHost(request, env, url) {
+  const p = url.pathname;
+  const who = await verifyAccess(request.headers.get('cf-access-jwt-assertion') ?? '', env);
+  if (!who) {
+    return secure(p.startsWith('/api/')
+      ? json(401, { error: 'Sign-in required.' })
+      : new Response(SIGN_IN_PAGE, { status: 401, headers: { 'content-type': 'text/html; charset=utf-8' } }), true);
+  }
+  if (p === '/api/mail' || p.startsWith('/api/mail/')) return secure(await mailApi(request, env, url), true);
+  if (p === '/api/me' && request.method === 'GET') return secure(json(200, { email: who.email, expiresAt: who.exp }), true);
+  if (request.method !== 'GET' && request.method !== 'HEAD') return secure(json(405, { error: 'Method not allowed.' }), true);
+  if (p === '/') return secure(await env.ASSETS.fetch(new Request(new URL('/mail/', url), request)), true);
+  if (p.startsWith('/_astro/') || p === '/favicon.svg' || p === '/motion.js') return secure(await env.ASSETS.fetch(request), true);
+  return secure(json(404, { error: 'Not found.' }), true);
+}
+
 export default {
+  email: (message, env) => receive(message, env),
+
   async fetch(request, env) {
     const url = new URL(request.url);
     const p = url.pathname;
+    if (env.MAIL_HOST && url.hostname === env.MAIL_HOST) return mailHost(request, env, url);
+    if (p === '/mail' || p.startsWith('/mail/')) return secure(json(404, { error: 'Not found.' }));
     const isApp = p === '/app' || p.startsWith('/app/');
     const isApi = p === '/api' || p.startsWith('/api/');
 
