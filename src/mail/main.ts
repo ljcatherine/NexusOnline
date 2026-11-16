@@ -180,6 +180,17 @@ function htmlFrame(html: string) {
   return frame;
 }
 
+/** Web images a reader would actually see; the page CSP blocks them all, this only decides whether to say so. */
+function hiddenImages(html: string) {
+  const doc = new DOMParser().parseFromString(html, 'text/html'); // inert: nothing loads
+  return [...doc.querySelectorAll('img')].filter(img => {
+    if (!/^\s*https?:/i.test(img.getAttribute('src') ?? '')) return false;
+    const size = (a: string) => parseInt(img.getAttribute(a) ?? '', 10);
+    const style = (img.getAttribute('style') ?? '').replace(/\s/g, '').toLowerCase();
+    return !(size('width') <= 2 || size('height') <= 2 || /display:none|visibility:hidden|(?:^|;)(?:width|height):[0-2]px/.test(style));
+  }).length;
+}
+
 function parseAddr(raw: string): Addr | null {
   const m = raw.match(/^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/) ?? raw.match(/^\s*()([^\s<>]+@[^\s<>]+)\s*$/);
   return m ? { name: m[1].trim(), address: m[2].trim() } : null;
@@ -216,7 +227,7 @@ function messageCard(m: Message, open: boolean, last: boolean) {
   const card = h('article', { class: `msg${open ? ' open' : ''}` });
   const draw = () => {
     const header = h('header', { class: 'msg-h', onclick: (e: Event) => { if (!last && !(e.target as Element).closest('button, a')) { open = !open; card.classList.toggle('open', open); draw(); } } },
-      avatar(nameOf(m), m.from_addr),
+      avatar(nameOf(m) === 'me' ? (config.name || m.from_addr) : nameOf(m), m.from_addr),
       h('div', { class: 'msg-who' },
         h('div', {}, h('b', {}, nameOf(m) === 'me' ? (config.name || 'me') : nameOf(m)), open ? h('span', { class: 'addr' }, ` <${m.from_addr}>`) : null),
         open ? h('div', { class: 'msg-to' }, `to ${people(m.to) || 'undisclosed recipients'}`, m.cc.length ? `, cc ${people(m.cc)}` : '', m.bcc.length ? `, bcc ${people(m.bcc)}` : '')
@@ -225,9 +236,9 @@ function messageCard(m: Message, open: boolean, last: boolean) {
       ...(open ? [h('span', { class: 'msg-acts' },
         h('button', { type: 'button', class: 'ic', title: 'Reply', onclick: () => reply(m, false) }, icon('reply')),
         h('button', { type: 'button', class: 'ic', title: 'Forward', onclick: () => forward(m) }, icon('forward')))] : []));
-    const remote = /<img[^>]+src\s*=\s*["']?https?:/i.test(m.html);
+    const remote = m.html ? hiddenImages(m.html) : 0;
     card.replaceChildren(header, ...(open ? [
-      ...(m.html && remote ? [h('p', { class: 'note' }, 'Remote images are hidden so senders cannot tell when you open this.')] : []),
+      ...(remote ? [h('p', { class: 'note' }, `${remote} image${remote > 1 ? 's' : ''} from the web ${remote > 1 ? 'are' : 'is'} hidden so the sender cannot tell when you open this.`)] : []),
       h('div', { class: 'msg-body' }, m.html ? htmlFrame(m.html) : h('div', { class: 'text' }, ...linkify(m.text || '(no message text)'))),
       ...(m.attachments.length ? [h('div', { class: 'atts' }, ...m.attachments.map((a, i) => h('a', {
         class: 'att', href: `/api/mail/messages/${m.id}/attachments/${i}`, download: a.filename, title: `Download ${a.filename}`,
