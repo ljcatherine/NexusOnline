@@ -23,7 +23,7 @@ const CSP = [
 
 const SECURITY_HEADERS = {
   'content-security-policy': CSP,
-  'strict-transport-security': 'max-age=31536000',
+  'strict-transport-security': 'max-age=63072000; includeSubDomains; preload',
   'x-content-type-options': 'nosniff',
   'x-frame-options': 'DENY',
   'referrer-policy': 'same-origin',
@@ -161,18 +161,29 @@ main{max-width:460px;display:grid;gap:14px}h1{font-size:28px;margin:0}p{margin:0
 // mail.<domain>: every path is owner-only. The inbox page lives at /mail/ in dist/.
 async function mailHost(request, env, url) {
   const p = url.pathname;
-  const who = await verifyAccess(request.headers.get('cf-access-jwt-assertion') ?? '', env);
+  // mail.<domain> may have its own Access application (security review NEX-012).
+  const assertion = request.headers.get('cf-access-jwt-assertion') ?? '';
+  const who = await verifyAccess(assertion, env.MAIL_ACCESS_AUDIENCE ? { ...env, ACCESS_AUDIENCE: env.MAIL_ACCESS_AUDIENCE } : env);
   if (!who) {
     return secure(p.startsWith('/api/')
       ? json(401, { error: 'Sign-in required.' })
       : new Response(SIGN_IN_PAGE, { status: 401, headers: { 'content-type': 'text/html; charset=utf-8' } }), true);
   }
-  if (p === '/api/mail' || p.startsWith('/api/mail/')) return secure(await mailApi(request, env, url), true);
-  if (p === '/api/me' && request.method === 'GET') return secure(json(200, { email: who.email, expiresAt: who.exp }), true);
+  if (p === '/api/mail' || p.startsWith('/api/mail/')) return secure(await mailApi(request, env, url, assertion), true);
+  if (p === '/api/me' && request.method === 'GET') return secure(json(200, { email: who.email, expiresAt: who.exp, amr: who.amr }), true);
   if (request.method !== 'GET' && request.method !== 'HEAD') return secure(json(405, { error: 'Method not allowed.' }), true);
   if (p === '/') return secure(await env.ASSETS.fetch(new Request(new URL('/mail/', url), request)), true);
   if (p.startsWith('/_astro/') || p === '/favicon.svg' || p === '/motion.js') return secure(await env.ASSETS.fetch(request), true);
   return secure(json(404, { error: 'Not found.' }), true);
+}
+
+// MTA-STS policy (RFC 8461): sending servers must use TLS to Cloudflare's MX (security review NEX-018).
+// shortcut: mode 'testing' reports problems without blocking mail; switch to 'enforce' after a clean week of TLS-RPT reports.
+function mtaSts(path) {
+  if (path !== '/.well-known/mta-sts.txt') return new Response('Not found', { status: 404 });
+  return new Response(['version: STSv1', 'mode: testing', 'mx: *.mx.cloudflare.net', 'max_age: 86400', ''].join(String.fromCharCode(10)), {
+    headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'public, max-age=3600' },
+  });
 }
 
 export default {
@@ -183,6 +194,7 @@ export default {
     const url = new URL(request.url);
     const p = url.pathname;
     if (env.MAIL_HOST && url.hostname === env.MAIL_HOST) return mailHost(request, env, url);
+    if (env.MTA_STS_HOST && url.hostname === env.MTA_STS_HOST) return secure(mtaSts(p));
     if (p === '/mail' || p.startsWith('/mail/')) return secure(json(404, { error: 'Not found.' }));
     const isApp = p === '/app' || p.startsWith('/app/');
     const isApi = p === '/api' || p.startsWith('/api/');
@@ -206,7 +218,7 @@ export default {
     }
     if (p === '/api/me') {
       if (request.method !== 'GET') return secure(json(405, { error: 'Method not allowed.' }), true);
-      return secure(json(200, { email: who.email, expiresAt: who.exp, devices: relayDevices(env) }), true);
+      return secure(json(200, { email: who.email, expiresAt: who.exp, amr: who.amr, devices: relayDevices(env) }), true);
     }
     const ssh = SSH_TARGET.exec(p.slice('/api'.length));
     if (ssh) {

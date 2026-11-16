@@ -152,7 +152,9 @@ import '../../styles/global.css';
   .msg .note{margin:-4px 12px 8px 58px;font-size:12.5px;color:var(--warn)}
   .text{white-space:pre-wrap;overflow-wrap:anywhere;font:14.5px/1.65 var(--body);color:var(--text)}
   .text a{color:var(--accent)}
-  .html{display:block;width:100%;min-height:80px;border:0;border-radius:12px;background:#fff}
+  .html{display:block;width:100%;height:min(70vh,720px);min-height:160px;border:0;border-radius:12px;background:#fff;resize:vertical;overflow:auto}
+  .unverified{margin:0 12px 10px 58px;padding:10px 14px;border-radius:10px;font-size:13px;color:var(--warn);background:color-mix(in srgb,var(--warn) 12%,transparent);border:1px solid color-mix(in srgb,var(--warn) 35%,transparent)}
+  .unverified b{color:var(--warn)}
   .av{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;font:700 15px var(--display);color:#0b1020;
     background:linear-gradient(140deg,hsl(var(--h) 80% 78%),hsl(calc(var(--h) + 40) 70% 66%))}
   .atts{display:flex;flex-wrap:wrap;gap:10px;padding:8px 12px 14px 58px}

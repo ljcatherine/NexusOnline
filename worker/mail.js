@@ -89,7 +89,7 @@ function cleanQuery(params) {
 }
 
 /** /api/mail/* on the mail host. The caller has already verified the owner's Access token. */
-export async function mailApi(request, env, url) {
+export async function mailApi(request, env, url, assertion = '') {
   const path = url.pathname.slice('/api/mail'.length) || '/';
   const m = request.method;
   const route = ROUTES.find(([method, pattern]) => method === m && pattern.test(path));
@@ -106,7 +106,8 @@ export async function mailApi(request, env, url) {
 
   // CSRF: changes only from this site's own pages, bodies only as JSON (forces a preflight cross-site).
   if (m !== 'GET' && request.headers.get('origin') !== url.origin) return json(403, { error: 'Cross-site request blocked.' });
-  const headers = new Headers({ authorization: `Bearer ${token(env)}` });
+  // The service checks the Access token itself too, so the shared token alone can't read mail (NEX-013).
+  const headers = new Headers({ authorization: `Bearer ${token(env)}`, 'x-access-jwt': assertion });
   let body = null;
   if (rules.body) {
     const type = request.headers.get('content-type')?.split(';')[0].trim().toLowerCase();

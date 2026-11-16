@@ -172,3 +172,18 @@ This runs the real Worker at `http://localhost:8788` with sample data and a
 locally signed token. `SIGNED_OUT=1 npm run preview:worker` shows the sign-in
 page. `SSH_RELAY_PORT=<port>` pipes the SSH tunnel to a local test relay (any SSH
 server behind a `nexus-ssh-v1` WebSocket). `scripts/preview.mjs` is never deployed.
+
+## Security switches
+
+Set these in `wrangler.jsonc` → `vars`, then `npm run deploy`. Each one is off until you set it,
+so turning them on can't lock you out by surprise.
+
+| Variable | What it does | Turn it on when |
+|---|---|---|
+| `REQUIRE_MFA` = `"true"` | `/app`, `/api` and mail refuse a sign-in unless the Access token lists a second factor (`amr` contains `otp` or `mfa`) | Signed in with password + NexusiOS code, `https://nexus.liamjc.dev/api/me` shows `"amr"` with `otp` or `mfa` in it |
+| `MAIL_ACCESS_AUDIENCE` | mail.liamjc.dev checks the AUD tag of its **own** Access application instead of the shared one | You created a separate Access application for `mail.liamjc.dev` |
+| `MTA_STS_HOST` | Serves the MTA-STS policy (mode `testing`) at `https://mta-sts.liamjc.dev/.well-known/mta-sts.txt` | Already on; add `_mta-sts` and `_smtp._tls` TXT records to publish it |
+
+The mail service on Debian checks the Access token too once `NEXUS_MAIL_ACCESS_TEAM`,
+`NEXUS_MAIL_ACCESS_AUD` (the mail application's AUD) and `NEXUS_MAIL_OWNER` are set in
+`/etc/nexus-mail/nexus-mail.env`.

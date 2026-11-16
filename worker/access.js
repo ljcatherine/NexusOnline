@@ -5,6 +5,8 @@ const enc = new TextEncoder();
 const dec = new TextDecoder();
 const TEAM = /^[a-z0-9-]{1,63}\.cloudflareaccess\.com$/;
 const JWKS_TTL = 10 * 60_000, REFETCH_FLOOR = 60_000;
+// RFC 8176 method references that count as a second factor (Keycloak: 'otp'; Access: 'mfa').
+const MFA_METHODS = new Set(['mfa', 'otp', 'totp', 'hwk', 'swk', 'sms', 'fpt', 'face']);
 let jwks = { url: '', at: 0, keys: new Map() };
 
 function b64url(s) {
@@ -35,7 +37,7 @@ async function signingKey(url, kid) {
 export function resetKeyCache() { jwks = { url: '', at: 0, keys: new Map() }; }
 
 /**
- * Returns { email, exp } when the token is a valid Access token for this
+ * Returns { email, exp, amr } when the token is a valid Access token for this
  * application and belongs to the owner; otherwise null. Never throws.
  */
 export async function verifyAccess(token, env, now = Date.now() / 1000) {
@@ -65,7 +67,11 @@ export async function verifyAccess(token, env, now = Date.now() / 1000) {
     if (typeof claims.iat === 'number' && claims.iat > now + 60) return null;
     const email = typeof claims.email === 'string' ? claims.email.trim().toLowerCase() : '';
     if (email !== owner) return null;
-    return { email, exp: claims.exp };
+    // REQUIRE_MFA=true refuses sign-ins whose token doesn't show a second factor (security review NEX-003).
+    // Off by default: turn it on only after /api/me shows the factors for a real sign-in.
+    const amr = Array.isArray(claims.amr) ? claims.amr.filter(m => typeof m === 'string').slice(0, 16) : [];
+    if (String(env.REQUIRE_MFA ?? '').trim() === 'true' && !amr.some(m => MFA_METHODS.has(m.toLowerCase()))) return null;
+    return { email, exp: claims.exp, amr };
   } catch {
     return null;
   }

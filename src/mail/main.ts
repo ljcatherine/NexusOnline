@@ -13,6 +13,7 @@ type Message = {
   id: string; thread_id: string; folder: string; received_at: number; subject: string; from_addr: string; from_name: string;
   to: Addr[]; cc: Addr[]; bcc: Addr[]; reply_to: string; envelope_to: string; message_id: string; text: string; html: string;
   attachments: { filename: string; type: string; size: number }[]; starred: boolean; read: boolean; reply_of: string; forward_of: string;
+  sender_auth: string;
 };
 
 const FOLDERS: [string, string, string][] = [
@@ -171,13 +172,11 @@ function linkify(text: string) {
 }
 
 function htmlFrame(html: string) {
-  const doc = '<!doctype html><meta charset="utf-8"><meta name="referrer" content="no-referrer"><base target="_blank">'
+  // Its own strict policy: no scripts, no remote images, fonts or styles (security review NEX-020).
+  const doc = '<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src data:; style-src \'unsafe-inline\'"><meta name="referrer" content="no-referrer"><base target="_blank">'
     + '<style>html{background:#fff;color:#1d2230;font:14.5px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}body{margin:18px 20px;overflow-wrap:anywhere}img{max-width:100%;height:auto}blockquote{margin:0 0 0 .6em;padding-left:.8em;border-left:3px solid #c9d4ea;color:#4a5468}</style>' + html;
-  // No allow-scripts, so nothing in the mail runs; same-origin only lets this page size the frame to its content.
-  const frame = h('iframe', { class: 'html', title: 'Message', sandbox: 'allow-same-origin allow-popups allow-popups-to-escape-sandbox', srcdoc: doc });
-  const fit = () => { const d = frame.contentDocument; if (d?.documentElement) frame.style.height = `${d.documentElement.scrollHeight + 4}px`; };
-  frame.addEventListener('load', () => { fit(); setTimeout(fit, 300); });
-  return frame;
+  // No scripts and no same-origin access: mail can't run code or reach this page. Fixed height, drag to resize.
+  return h('iframe', { class: 'html', title: 'Message', sandbox: 'allow-popups allow-popups-to-escape-sandbox', srcdoc: doc });
 }
 
 /** Web images a reader would actually see; the page CSP blocks them all, this only decides whether to say so. */
@@ -237,7 +236,10 @@ function messageCard(m: Message, open: boolean, last: boolean) {
         h('button', { type: 'button', class: 'ic', title: 'Reply', onclick: () => reply(m, false) }, icon('reply')),
         h('button', { type: 'button', class: 'ic', title: 'Forward', onclick: () => forward(m) }, icon('forward')))] : []));
     const remote = m.html ? hiddenImages(m.html) : 0;
+    const unverified = m.folder !== 'sent' && m.sender_auth !== 'pass';
     card.replaceChildren(header, ...(open ? [
+      ...(unverified ? [h('p', { class: 'unverified', role: 'note' }, h('b', {}, 'Unverified sender. '),
+        `This message couldn't be confirmed as really coming from ${m.from_addr}. Be careful with links, attachments and requests for money or codes.`)] : []),
       ...(remote ? [h('p', { class: 'note' }, `${remote} image${remote > 1 ? 's' : ''} from the web ${remote > 1 ? 'are' : 'is'} hidden so the sender cannot tell when you open this.`)] : []),
       h('div', { class: 'msg-body' }, m.html ? htmlFrame(m.html) : h('div', { class: 'text' }, ...linkify(m.text || '(no message text)'))),
       ...(m.attachments.length ? [h('div', { class: 'atts' }, ...m.attachments.map((a, i) => h('a', {

@@ -7,7 +7,8 @@
   "workers_dev": false,
   "preview_urls": false,
   "routes": [{ "pattern": "REPLACE_WITH_HOSTNAME", "custom_domain": true },
-    { "pattern": "REPLACE_WITH_MAIL_HOSTNAME", "custom_domain": true }],
+    { "pattern": "REPLACE_WITH_MAIL_HOSTNAME", "custom_domain": true },
+    { "pattern": "mta-sts.REPLACE_WITH_DOMAIN", "custom_domain": true }],
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
@@ -21,7 +22,9 @@
     "ACCESS_AUDIENCE": "REPLACE_WITH_ACCESS_APPLICATION_AUD_TAG",
     "OWNER_EMAIL": "REPLACE_WITH_OWNER_EMAIL",
     // Private inbox host (owner only on every path). Leave unset to turn the inbox off.
-    "MAIL_HOST": "REPLACE_WITH_MAIL_HOSTNAME"
+    "MAIL_HOST": "REPLACE_WITH_MAIL_HOSTNAME",
+    // Serves /.well-known/mta-sts.txt (RFC 8461) on its own host.
+    "MTA_STS_HOST": "mta-sts.REPLACE_WITH_DOMAIN"
   },
   // Same private VPC service the existing nexus-gateway Worker uses.
   "vpc_services": [

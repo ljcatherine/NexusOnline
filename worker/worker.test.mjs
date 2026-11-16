@@ -348,3 +348,38 @@ test('attachments always download; a missing or down mail server fails cleanly',
   const none = { ...mailEnv(), MAIL_SERVICE_TOKEN: '' };
   assert.equal((await worker.fetch(mreq('/api/mail/threads', { headers: auth }), none)).status, 503);
 });
+
+// --- security review fixes ---
+test('REQUIRE_MFA refuses sign-ins without a second factor, and is off by default', async () => {
+  resetKeyCache();
+  const on = { ...ENV_BASE, REQUIRE_MFA: 'true' };
+  assert.equal(await verifyAccess(await sign(), on), null);
+  assert.equal(await verifyAccess(await sign({ amr: ['pwd'] }), on), null);
+  assert.deepEqual((await verifyAccess(await sign({ amr: ['pwd', 'otp'] }), on))?.amr, ['pwd', 'otp']);
+  assert.ok(await verifyAccess(await sign({ amr: ['mfa'] }), on));
+  assert.deepEqual((await verifyAccess(await sign(), ENV_BASE))?.amr, []);
+});
+
+test('mail host checks its own Access audience and forwards the token to the mail service', async () => {
+  const env = { ...mailEnv(), MAIL_ACCESS_AUDIENCE: 'b'.repeat(64) };
+  const mainToken = await sign();
+  const mailToken = await sign({ aud: ['b'.repeat(64)] });
+  assert.equal((await worker.fetch(mreq('/api/mail/threads', { headers: { 'cf-access-jwt-assertion': mainToken } }), env)).status, 401);
+  assert.equal((await worker.fetch(mreq('/api/mail/threads', { headers: { 'cf-access-jwt-assertion': mailToken } }), env)).status, 200);
+  assert.equal(env.mailCalls[0].req.headers.get('x-access-jwt'), mailToken);
+  assert.equal((await worker.fetch(req('/app/', { token: mailToken }), env)).status, 401);
+  assert.equal((await worker.fetch(req('/app/', { token: mainToken }), env)).status, 200);
+});
+
+test('HSTS covers subdomains and the MTA-STS policy is served on its own host', async () => {
+  const env = { ...makeEnv(), MTA_STS_HOST: 'mta-sts.example.com' };
+  const home = await worker.fetch(req('/'), env);
+  assert.match(home.headers.get('strict-transport-security'), /includeSubDomains; preload/);
+  const policy = await worker.fetch(new Request('https://mta-sts.example.com/.well-known/mta-sts.txt'), env);
+  assert.equal(policy.status, 200);
+  const text = await policy.text();
+  assert.match(text, /^version: STSv1$/m);
+  assert.match(text, /^mode: testing$/m);
+  assert.match(text, /^mx: \*\.mx\.cloudflare\.net$/m);
+  assert.equal((await worker.fetch(new Request('https://mta-sts.example.com/other'), env)).status, 404);
+});
