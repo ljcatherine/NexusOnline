@@ -13,6 +13,7 @@ const CSP = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src https://fonts.gstatic.com",
   "img-src 'self' data:",
+  "media-src 'self' blob: data:",
   "connect-src 'self'",
   "frame-ancestors 'none'",
   "base-uri 'none'",
@@ -26,7 +27,7 @@ const SECURITY_HEADERS = {
   'x-content-type-options': 'nosniff',
   'x-frame-options': 'DENY',
   'referrer-policy': 'same-origin',
-  'permissions-policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), clipboard-read=()',
+  'permissions-policy': 'camera=(), microphone=(self), geolocation=(), payment=(), usb=(), clipboard-read=()',
   'cross-origin-opener-policy': 'same-origin',
   'cross-origin-resource-policy': 'same-origin',
 };
@@ -97,7 +98,7 @@ async function proxy(request, env, url, assertion) {
     }));
     if (upstream.status >= 300 && upstream.status < 400) return json(502, { error: 'The gateway is unreachable.' });
     const out = new Headers({ 'cache-control': 'no-store' });
-    for (const name of ['content-type', 'retry-after', 'etag']) {
+    for (const name of ['content-type', 'content-disposition', 'retry-after', 'etag']) {
       const v = upstream.headers.get(name);
       if (v !== null) out.set(name, v);
     }

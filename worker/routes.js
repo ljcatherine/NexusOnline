@@ -26,6 +26,15 @@ const ROUTES = [
   ['POST', re('/v1/chat/completions/input_tokens'), { maxBody: 8 * MB }],
   ['POST', re('/v1/search'), { maxBody: 16 * KB }],
   ['POST', re('/v1/research'), { maxBody: 2 * MB }],
+  // Media and voice (PS5 gateway). Job ids are lowercase hex only.
+  ['GET', re('/v1/ai/status')],
+  ['GET', re(`/v1/ai/jobs/${HEX32}`)],
+  ['GET', re(`/v1/ai/jobs/${HEX32}/result`)],
+  ['POST', re('/v1/images/generations'), { maxBody: 12 * MB }],
+  ['POST', re('/v1/videos/generations'), { maxBody: 16 * MB }],
+  ['POST', re('/v1/audio/transcriptions'), { maxBody: 16 * MB }],
+  ['POST', re('/v1/audio/speech'), { maxBody: 4 * MB }],
+  ['POST', re('/v1/voice/chat'), { maxBody: 16 * MB }],
 ];
 
 /** Returns the route's rules, or null when the web may not call it. */

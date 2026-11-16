@@ -1,4 +1,6 @@
-import { api, raw, h, fmt, safeUrl, viewHeader, errorBox, chatStore, ApiError, type Cleanup } from './lib';
+import { api, h, fmt, safeUrl, viewHeader, errorBox, chatStore, ApiError, type Cleanup } from './lib';
+import { mountAiStatus } from './aistatus';
+import { busyText, errorMessage } from './queue';
 
 type Msg = { role: 'system' | 'user' | 'assistant'; content: string };
 type Chat = { id: string; title: string; model: string; messages: Msg[]; updatedAt: number };
@@ -49,7 +51,12 @@ export function mount(root: HTMLElement): Cleanup {
   const input = h('textarea', { id: 'chat-input', rows: 3, placeholder: 'Ask about your hosts, a file, or anything else…', 'aria-label': 'Message' });
   const sendBtn = h('button', { class: 'btn primary', type: 'submit' }, 'Send');
   const chip = h('div', { class: 'attach' });
-  const form = h('form', { class: 'composer' }, chip, input, h('div', { class: 'composer-row' }, h('small', {}, 'Enter to send · Shift+Enter for a new line'), sendBtn));
+  // Separate from the status line: mountAiStatus rewrites its element on every poll, which would erase "Queued".
+  const aiStatus = h('span', { class: 'ai-status' });
+  const queued = h('span', { class: 'ai-status', 'data-state': 'queued', hidden: true }, 'Queued');
+  const form = h('form', { class: 'composer' }, chip, input, h('div', { class: 'composer-row' },
+    h('small', {}, 'Enter to send · Shift+Enter for a new line'), aiStatus, queued, sendBtn));
+  const stopStatus = mountAiStatus(aiStatus);
 
   root.append(h('div', { class: 'chat' },
     h('aside', { class: 'card chat-side' },
@@ -107,6 +114,28 @@ export function mount(root: HTMLElement): Cleanup {
     } catch (e) { thread.replaceChildren(errorBox(e)); }
   }
 
+  /** POSTs the chat. "Queued" shows until the gateway answers; PS5 offline and queue-full get fixed text. */
+  async function chatFetch(body: string, signal: AbortSignal): Promise<Response> {
+    let res: Response;
+    queued.hidden = false;
+    try {
+      res = await fetch('/api/v1/chat/completions', { method: 'POST', signal, credentials: 'same-origin', redirect: 'manual',
+        headers: { 'content-type': 'application/json', accept: 'text/event-stream' }, body });
+    } catch (e) {
+      if ((e as Error).name === 'AbortError') throw e;
+      throw new ApiError(0, 'The gateway is unreachable right now.');
+    } finally { queued.hidden = true; }
+    if (res.type === 'opaqueredirect') throw new ApiError(0, 'Your sign-in has expired. Reload the page to sign in again.');
+    if (!res.ok) {
+      let serverError = '';
+      try { serverError = errorMessage(await res.json()); } catch { /* not JSON */ }
+      const message = busyText(res.status, res.headers.get('retry-after'), serverError)
+        ?? (res.status === 401 ? 'Your sign-in has expired. Reload the page to sign in again.' : serverError || `Request failed (${res.status}).`);
+      throw new ApiError(res.status, message);
+    }
+    return res;
+  }
+
   async function send(text: string) {
     if (controller) return;
     const model = modelSelect.value;
@@ -138,10 +167,7 @@ export function mount(root: HTMLElement): Cleanup {
           sources.map((s: any, i: number) => `[${i + 1}] ${s.title}\n${s.url}\n${s.snippet}`).join('\n\n') });
       } else status.remove();
 
-      const res = await raw('/v1/chat/completions', {
-        method: 'POST', signal: controller.signal, headers: { accept: 'text/event-stream' },
-        body: JSON.stringify({ model, messages, stream: true }),
-      });
+      const res = await chatFetch(JSON.stringify({ model, messages, stream: true }), controller.signal);
       if (res.headers.get('content-type')?.includes('text/event-stream') && res.body) {
         const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
         let buf = '';
@@ -206,5 +232,5 @@ export function mount(root: HTMLElement): Cleanup {
 
   renderAll();
   input.focus();
-  return () => controller?.abort();
+  return () => { stopStatus(); controller?.abort(); };
 }

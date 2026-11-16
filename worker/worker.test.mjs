@@ -263,3 +263,143 @@ test('mail changes need same origin and a valid id', async () => {
   assert.equal((await worker.fetch(mreq(`/api/mail/${id}`, { method: 'DELETE', headers: { ...auth, origin: MAIL } }), env)).status, 200);
   assert.equal((await worker.fetch(mreq(`/api/mail/${id}`, { headers: auth }), env)).status, 404);
 });
+
+// --- media and voice routes ---
+const MIB = 1024 * 1024;
+const JOB = 'a'.repeat(32);
+const MEDIA = [
+  ['GET', '/api/v1/ai/status'],
+  ['GET', `/api/v1/ai/jobs/${JOB}`],
+  ['GET', `/api/v1/ai/jobs/${JOB}/result`],
+  ['POST', '/api/v1/images/generations', 12],
+  ['POST', '/api/v1/videos/generations', 16],
+  ['POST', '/api/v1/audio/transcriptions', 16],
+  ['POST', '/api/v1/audio/speech', 4],
+  ['POST', '/api/v1/voice/chat', 16],
+];
+const JSON_POST = { origin: ORIGIN, 'content-type': 'application/json' };
+
+test('media and voice routes are allow-listed for their method only', () => {
+  for (const [method, path] of MEDIA) {
+    const p = path.slice('/api'.length);
+    assert.ok(classify(method, p), `${method} ${p}`);
+    for (const other of ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']) {
+      if (other !== method) assert.equal(classify(other, p), null, `${other} ${p}`);
+    }
+  }
+  assert.equal(classify('GET', '/v1/images/generations'), null);
+  assert.equal(classify('GET', '/v1/voice/chat'), null);
+  assert.equal(classify('POST', '/v1/ai/status'), null);
+  assert.equal(classify('GET', '/v1/ai/status/extra'), null);
+});
+
+test('job ids must be 32 lowercase hex characters', async () => {
+  const bad = ['a'.repeat(31), 'a'.repeat(33), 'A'.repeat(32), 'g'.repeat(32), `${'a'.repeat(31)}/`, `../${'a'.repeat(29)}`];
+  for (const id of bad) {
+    assert.equal(classify('GET', `/v1/ai/jobs/${id}`), null, id);
+    assert.equal(classify('GET', `/v1/ai/jobs/${id}/result`), null, id);
+  }
+  assert.ok(classify('GET', `/v1/ai/jobs/${'0f'.repeat(16)}`));
+  const token = await sign();
+  const env = makeEnv();
+  for (const path of [`/api/v1/ai/jobs/${'A'.repeat(32)}`, `/api/v1/ai/jobs/${JOB}/extra`, `/api/v1/ai/jobs/${JOB}/result/x`]) {
+    assert.equal((await worker.fetch(req(path, { token }), env)).status, 403, path);
+  }
+  assert.equal(env.calls.length, 0);
+});
+
+test('media routes reject other methods before the gateway', async () => {
+  const token = await sign();
+  const env = makeEnv();
+  for (const [method, path] of MEDIA) {
+    const other = method === 'GET' ? 'POST' : 'GET';
+    const res = await worker.fetch(req(path, { token, method: other, headers: JSON_POST, body: other === 'POST' ? '{}' : undefined }), env);
+    assert.equal(res.status, 403, `${other} ${path}`);
+  }
+  assert.equal(env.calls.length, 0);
+});
+
+test('media POST bodies over their cap get 413 without contacting the gateway', async () => {
+  const token = await sign();
+  const env = makeEnv();
+  for (const [method, path, mb] of MEDIA.filter(r => r[0] === 'POST')) {
+    const body = new Uint8Array(mb * MIB + 1);
+    const res = await worker.fetch(req(path, { token, method, headers: JSON_POST, body }), env);
+    assert.equal(res.status, 413, path);
+  }
+  assert.equal(env.calls.length, 0);
+});
+
+test('media POST bodies within their cap are forwarded', async () => {
+  const token = await sign();
+  for (const [method, path] of MEDIA.filter(r => r[0] === 'POST')) {
+    const env = makeEnv();
+    const res = await worker.fetch(req(path, { token, method, headers: JSON_POST, body: '{"x":1}' }), env);
+    assert.equal(res.status, 200, path);
+    assert.equal(env.calls.length, 1, path);
+  }
+  const env = makeEnv();
+  const atCap = new Uint8Array(4 * MIB);
+  assert.equal((await worker.fetch(req('/api/v1/audio/speech', { token, method: 'POST', headers: JSON_POST, body: atCap }), env)).status, 200);
+});
+
+test('media responses pass through type, disposition and retry headers only', async () => {
+  const token = await sign();
+  const job = `/api/v1/ai/jobs/${JOB}/result`;
+  const cases = [
+    { method: 'POST', path: '/api/v1/voice/chat', status: 200, type: 'text/event-stream' },
+    { method: 'POST', path: '/api/v1/audio/speech', status: 200, type: 'audio/wav', disposition: 'attachment; filename="speech.wav"' },
+    { method: 'GET', path: job, status: 200, type: 'video/mp4', disposition: 'inline; filename="clip.mp4"' },
+    { method: 'GET', path: job, status: 200, type: 'video/webm' },
+    { method: 'POST', path: '/api/v1/videos/generations', status: 429, type: 'application/json', retry: '30' },
+    { method: 'GET', path: '/api/v1/ai/status', status: 503, type: 'application/json', retry: '90' },
+  ];
+  for (const c of cases) {
+    const upstream = {
+      'content-type': c.type,
+      ...(c.disposition ? { 'content-disposition': c.disposition } : {}),
+      ...(c.retry ? { 'retry-after': c.retry } : {}),
+      'x-internal-host': 'pi.lan', server: 'gateway', 'set-cookie': 'a=b',
+    };
+    const env = makeEnv(() => new Response('{}', { status: c.status, headers: upstream }));
+    const init = { token, method: c.method, headers: c.method === 'POST' ? JSON_POST : {}, body: c.method === 'POST' ? '{}' : undefined };
+    const res = await worker.fetch(req(c.path, init), env);
+    assert.equal(res.status, c.status, c.path);
+    assert.equal(res.headers.get('content-type'), c.type, c.path);
+    assert.equal(res.headers.get('content-disposition'), c.disposition ?? null, c.path);
+    assert.equal(res.headers.get('retry-after'), c.retry ?? null, c.path);
+    assert.equal(res.headers.get('x-internal-host'), null);
+    assert.equal(res.headers.get('server'), null);
+    assert.equal(res.headers.get('set-cookie'), null);
+    assert.equal(res.headers.get('cache-control'), 'no-store, private');
+  }
+});
+
+test('SSE output is streamed to the browser, not buffered', { timeout: 5000 }, async () => {
+  const token = await sign();
+  let push;
+  const upstream = new ReadableStream({ start(c) { push = c; } });
+  const env = makeEnv(() => new Response(upstream, { headers: { 'content-type': 'text/event-stream' } }));
+  const res = await worker.fetch(req('/api/v1/voice/chat', { token, method: 'POST', headers: JSON_POST, body: '{}' }), env);
+  const reader = res.body.getReader();
+  push.enqueue(new TextEncoder().encode('event: sentence\ndata: {"i":0}\n\n'));
+  const { value } = await reader.read();
+  assert.match(new TextDecoder().decode(value), /event: sentence/);
+  push.close();
+  await reader.cancel();
+});
+
+test('CSP allows blob and data media and keeps the other directives', async () => {
+  const csp = (await worker.fetch(req('/'), makeEnv())).headers.get('content-security-policy');
+  assert.match(csp, /media-src 'self' blob: data:/);
+  assert.match(csp, /connect-src 'self'/);
+  assert.match(csp, /frame-ancestors 'none'/);
+});
+
+test('Permissions-Policy allows the microphone for this origin only', async () => {
+  const pp = (await worker.fetch(req('/'), makeEnv())).headers.get('permissions-policy');
+  assert.match(pp, /microphone=\(self\)/);
+  assert.doesNotMatch(pp, /microphone=\(\)/);
+  assert.match(pp, /camera=\(\)/);
+  assert.match(pp, /geolocation=\(\)/);
+});

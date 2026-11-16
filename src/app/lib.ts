@@ -21,12 +21,18 @@ export function safeUrl(raw: unknown): string | null {
   try { const u = new URL(String(raw)); return u.protocol === 'https:' || u.protocol === 'http:' ? u.href : null; } catch { return null; }
 }
 
+const SIGN_IN = 'Your sign-in has expired. Reload the page to sign in again.';
+
 export class ApiError extends Error {
-  constructor(public status: number, message: string) { super(message); }
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
 }
 
 function explain(status: number, message: string): string {
-  if (status === 0 || status === 401) return 'Your sign-in has expired. Reload the page to sign in again.';
+  if (status === 401) return SIGN_IN;
   if (status === 403) return message || 'This action is not allowed on the web.';
   if (status === 404) return 'Not found on the gateway.';
   if (status === 429) return 'The gateway is rate limiting requests. Wait a few seconds and try again.';
@@ -34,7 +40,11 @@ function explain(status: number, message: string): string {
   return message || `Request failed (${status}).`;
 }
 
-/** fetch() to the Worker's /api proxy. An Access redirect (expired session) shows up as status 0. */
+/**
+ * fetch() to the Worker's /api proxy. An Access redirect (expired session) is an opaque redirect,
+ * reported as ApiError status 0 with the sign-in message. Transport failures are status 0 too,
+ * but with their own messages. A caller's abort is rethrown unchanged so callers can recognise it.
+ */
 export async function raw(path: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers);
   if (init.body && !headers.has('content-type')) headers.set('content-type', 'application/json');
@@ -43,13 +53,16 @@ export async function raw(path: string, init: RequestInit = {}): Promise<Respons
   try {
     res = await fetch(`/api${path}`, { ...init, headers, credentials: 'same-origin', redirect: 'manual' });
   } catch (e) {
-    if ((e as Error).name === 'AbortError') throw e;
-    throw new ApiError(0, explain(0, ''));
+    const name = (e as Error)?.name;
+    if (name === 'AbortError') throw e;
+    if (name === 'TimeoutError') throw new ApiError(0, 'The request timed out.');
+    throw new ApiError(0, 'Network error — check your connection.');
   }
-  if (res.type === 'opaqueredirect' || !res.ok) {
+  if (res.type === 'opaqueredirect') throw new ApiError(0, SIGN_IN);
+  if (!res.ok) {
     let message = '';
-    try { message = String((await res.json())?.error ?? ''); } catch { /* not JSON */ }
-    throw new ApiError(res.type === 'opaqueredirect' ? 0 : res.status, explain(res.status, message));
+    try { const err = (await res.json())?.error; const text = typeof err === 'string' ? err : err?.message; message = typeof text === 'string' ? text.slice(0, 300) : ''; } catch { /* not JSON */ }
+    throw new ApiError(res.status, explain(res.status, message));
   }
   return res;
 }

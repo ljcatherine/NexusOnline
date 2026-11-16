@@ -1,12 +1,20 @@
 import type { Cleanup } from './lib';
 import * as overview from './overview';
 import * as chat from './chat';
+import { mountImageView } from './image';
+import { mountVideoView } from './video';
+import { mountAudioView } from './audio';
+import { mountVoiceView } from './voice';
 import * as files from './files';
 import * as models from './models';
 import * as runs from './runs';
 import * as settings from './settings';
 
-const VIEWS: Record<string, { mount(root: HTMLElement): Cleanup }> = { overview, chat, files, models, runs, security: settings };
+const VIEWS: Record<string, { mount(root: HTMLElement): Cleanup }> = {
+  overview, chat,
+  image: { mount: mountImageView }, video: { mount: mountVideoView }, audio: { mount: mountAudioView }, voice: { mount: mountVoiceView },
+  files, models, runs, security: settings,
+};
 const root = document.getElementById('view')!;
 let cleanup: Cleanup = () => {};
 
